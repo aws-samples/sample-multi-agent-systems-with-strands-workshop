@@ -5,7 +5,7 @@ Build, deploy, and scale agents with reusable multi-agent patterns using the [St
 ![Strands Agents](https://img.shields.io/badge/Strands_Agents-SDK-FF9900?logo=amazonaws&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Amazon Bedrock](https://img.shields.io/badge/Amazon_Bedrock-AgentCore-232F3E?logo=amazonaws&logoColor=white)
-![re:Invent](https://img.shields.io/badge/AWS_re%3AInvent-2025-FF9900?logo=amazonaws&logoColor=white)
+![re:Invent](https://img.shields.io/badge/AWS_re%3AInvent-2026-FF9900?logo=amazonaws&logoColor=white)
 ![License MIT-0](https://img.shields.io/badge/License-MIT--0-green.svg)
 
 > This sample works with Strands Agents and Amazon Bedrock AgentCore. Code in this repository is provided "as is" and is not officially supported by Amazon.
