@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Session and checkpoint files written at runtime (per-participant state)
+sessions/
+checkpoints/
+
+# AgentCore CLI scaffolding generated during deploy module (per-participant,
+# contains account IDs / deployed state - must never be committed)
+agentcore/
+app/MyAgent/
+.python-version
+
+# Logs
+*.log
+npm-debug.log*
+
+# Diagram sources (keep only exported PNGs)
+*.drawio
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
