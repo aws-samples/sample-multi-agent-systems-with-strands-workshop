@@ -89,11 +89,15 @@ result = swarm(task)
 | Change path | Rewrite code | Change `description` |
 | Best for | Known, stable workflows | Exploration, multi-domain tasks |
 
+## Prerequisites
+
+- Python 3.10 or higher
+
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## Prerequisites

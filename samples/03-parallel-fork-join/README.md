@@ -1,15 +1,15 @@
 # Module 3: Parallel Fork-Join
 
-**Pattern 2.** Fork independent sub-tasks to run simultaneously, then merge results: latency drops to the slowest single worker.
+**Pattern 2.** Fork independent sub-tasks to run simultaneously, then merge results: latency drops to the slowest single worker instead of the sum of all workers.
 
 ## Architecture
 
-![Parallel Fork-Join: Researcher → asyncio.gather(Analyzer A, B, C) → Synthesizer → Memo](./architecture.png)
+![Parallel Fork-Join: Researcher → GraphBuilder parallel (Analyzer A, B, C simultaneously) → Synthesizer → Memo](./architecture.png)
 
 
 ## What you'll build
 
-A pipeline that forks three Option Analyzers (A, B, C) in parallel using `asyncio.gather` and `invoke_async`, then merges their analyses into a final memo.
+A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphBuilder` parallel topology, then merges their analyses into a final memo. `GraphBuilder` detects parallelism from edge structure automatically — no threading or async code required.
 
 ## Files
 
@@ -21,29 +21,42 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `asynci
 
 ## Key concepts
 
-- `agent.invoke_async(prompt)`: runs an agent as a coroutine (non-blocking)
-- `asyncio.gather(...)`: fork: starts N coroutines simultaneously; join: waits for all
-- `nest_asyncio.apply()`: required for `asyncio.gather` inside Jupyter notebooks
+- `GraphBuilder`: declares the graph topology; nodes with the same predecessor and no mutual dependency run in parallel automatically
+- Fork: three `add_edge("researcher", "analyzer_x")` calls — SDK dispatches all three simultaneously
+- Join: three `add_edge("analyzer_x", "synthesizer")` calls — synthesizer starts after all three finish
+- `set_execution_timeout(N)`: bounds the total wall-clock time for the graph
 - Wall-clock time ≈ slowest single analyzer (not sum of all three)
 
 ## Strands Agents SDK
 
-Parallel fork-join uses `Agent.invoke_async()`: the async version of `agent()` that returns a coroutine.
-`asyncio.gather()` runs multiple coroutines simultaneously and returns when all complete.
-See the [Strands Agents SDK documentation](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+Parallel fork-join uses [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`.
+Nodes that share the same predecessor and have no dependency on each other are detected automatically and dispatched concurrently.
+See the [Graph documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
-from strands import Agent
-import asyncio
+from strands.multiagent import GraphBuilder
 
-result_a, result_b, result_c = await asyncio.gather(
-    analyzer_a.invoke_async(f"Option A..."),
-    analyzer_b.invoke_async(f"Option B..."),
-    analyzer_c.invoke_async(f"Option C..."),
-)
+builder = GraphBuilder()
+builder.add_node(researcher,  "researcher")
+builder.add_node(analyzer_a,  "analyzer_a")
+builder.add_node(analyzer_b,  "analyzer_b")
+builder.add_node(analyzer_c,  "analyzer_c")
+builder.add_node(synthesizer, "synthesizer")
+
+# Fork: all three analyzers start once researcher finishes
+builder.add_edge("researcher", "analyzer_a")
+builder.add_edge("researcher", "analyzer_b")
+builder.add_edge("researcher", "analyzer_c")
+
+# Join: synthesizer waits for all three
+builder.add_edge("analyzer_a", "synthesizer")
+builder.add_edge("analyzer_b", "synthesizer")
+builder.add_edge("analyzer_c", "synthesizer")
+
+builder.set_execution_timeout(300)
+graph = builder.build()
+result = graph(DECISION_BRIEF)
 ```
-
-> `Agent.invoke_async()` is documented in the Strands SDK: it is the async equivalent of calling `agent(prompt)` directly.
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el): all 3 parallel agents call Bedrock concurrently
@@ -52,13 +65,14 @@ result_a, result_b, result_c = await asyncio.gather(
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## Prerequisites
 
-Module 1: imports tools from `../01-strands-foundations/decision_brief_tools.py`.
+- Python 3.10 or higher
+- Module 1: imports tools from `../01-strands-foundations/decision_brief_tools.py`
 
 ## Next
 

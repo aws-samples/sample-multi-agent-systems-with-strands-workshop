@@ -27,25 +27,27 @@ A single agent with three mock business intelligence tools that can look up comp
 - `result.metrics.get_summary()`: token usage, cycle count, per-tool stats
 - The ceiling: why a single agent struggles with complex, multi-dimensional tasks
 
+## Prerequisites
+
+- Python 3.10 or higher
+
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 Or open `module-01.ipynb` in VS Code / JupyterLab and run cells top to bottom.
 
 ## Model options
 
-| Model ID | Notes |
-|----------|-------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Default: best quality |
-| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Faster, lower cost |
-| `amazon.nova-pro-v1:0` | AWS credits / sponsored events |
-| `amazon.nova-lite-v1:0` | Cheapest option |
+Pass `model=BedrockModel(model_id="...")` to `Agent(...)` to switch models:
 
-Pass `model=BedrockModel(model_id="...")` to `Agent(...)` to switch.
+- `us.anthropic.claude-sonnet-4-20250514-v1:0` (default)
+- `us.anthropic.claude-haiku-4-5-20251001-v1:0`
+- `amazon.nova-pro-v1:0`
+- `amazon.nova-lite-v1:0`
 
 ## Next
 

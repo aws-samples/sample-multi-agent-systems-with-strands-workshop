@@ -27,13 +27,9 @@ Combine all four multi-agent patterns into one complete Decision Intelligence pi
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
-
-## Prerequisites
-
-All previous modules. Imports tools from `../01-strands-foundations/decision_brief_tools.py`.
 
 ## What happens at runtime
 
@@ -42,8 +38,18 @@ All previous modules. Imports tools from `../01-strands-foundations/decision_bri
 3. Orchestrator calls `critic_refiner(brief, analyses)` → `GraphBuilder` writer-critic loop until `APPROVED`
 4. Final approved memo returned to the orchestrator's context
 
-Typical execution: ~50s, ~11K tokens total.
+Typical execution: ~50s, ~11K tokens total (measured with Amazon Nova Pro on Amazon Bedrock).
 
-## Next
+## Deploy to production
 
-→ [Module 8: Deploy to AgentCore](../08-deploy-agentcore/)
+Each module from M2 to M7 includes a `production/` folder with the full Amazon Bedrock AgentCore Runtime deployment.
+
+```bash
+cd production/
+cat README.md
+```
+
+## Prerequisites
+
+- Python 3.10 or higher
+- All previous modules. Imports tools from `../01-strands-foundations/decision_brief_tools.py`.

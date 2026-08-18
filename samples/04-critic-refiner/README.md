@@ -57,11 +57,15 @@ result = graph(prompt)
 
 The condition function `needs_revision` parses the Critic's text. The Critic **must** respond with either `APPROVED` or `REVISION NEEDED: ...`: if it writes prose instead, conditions fail silently and the graph either loops forever or exits prematurely. The system prompt must enforce this format.
 
+## Prerequisites
+
+- Python 3.10 or higher
+
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## Prerequisites
