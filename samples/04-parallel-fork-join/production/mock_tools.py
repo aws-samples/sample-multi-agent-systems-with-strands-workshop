@@ -1,5 +1,5 @@
 """Mock business intelligence tools for the production runtime.
-Copy of decision_brief_tools.py — kept here so the container is self-contained.
+Copy of decision_brief_tools.py: kept here so the container is self-contained.
 In production, replace with AgentCore Gateway Web Search or another live data source.
 """
 
@@ -92,7 +92,7 @@ COMPETITORS = {
         "time_to_profitability_months": 14,
         "key_insight": (
             "PrimeStore launched to all users at once. Lower price point drove higher "
-            "sign-ups but lower retention — 40% churned after trial. Slower to profitability."
+            "sign-ups but lower retention: 40% churned after trial. Slower to profitability."
         ),
     },
 }
@@ -125,7 +125,7 @@ def get_company_data(company_name: str) -> str:
         f"Current subscription revenue: ${data['subscription_revenue_usd']:,.0f}\n"
         f"Top spender segment: top {data['top_spender_segment_pct']}% of users, "
         f"avg order ${data['top_spender_avg_order_value_usd']:.2f}\n"
-        f"Q1 survey — premium tier interest: {data['q1_survey_premium_interest_pct']}% of top spenders"
+        f"Q1 survey: premium tier interest: {data['q1_survey_premium_interest_pct']}% of top spenders"
     )
 
 
@@ -170,7 +170,7 @@ def get_competitor_data(competitor_name: str) -> str:
 
     benefits_str = "\n  ".join(f"- {b}" for b in data["benefits"])
     return (
-        f"Competitor: {data['company']} — {data['tier_name']}\n"
+        f"Competitor: {data['company']}: {data['tier_name']}\n"
         f"Launched: {data['launched']}\n"
         f"Price: ${data['monthly_price_usd']:.2f}/mo or ${data['annual_price_usd']:.2f}/yr\n"
         f"Benefits:\n  {benefits_str}\n"

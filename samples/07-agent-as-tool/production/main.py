@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 # ── Research tools ─────────────────────────────────────────────────────────
-# Default: mock business intelligence tools — no setup needed.
+# Default: mock business intelligence tools, no setup needed.
 # Optional: replace with AgentCore Web Search for live market data:
 #
 #   from strands.tools.mcp.mcp_client import MCPClient

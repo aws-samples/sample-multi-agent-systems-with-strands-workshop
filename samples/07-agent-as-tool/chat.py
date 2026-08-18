@@ -18,14 +18,14 @@ Model options (pass model= to each Agent to switch):
 """
 
 import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent, tool
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 RESEARCHER_PROMPT = (
     "You are a market research specialist. Use your tools to gather relevant data. "
-    "Return structured findings — data only."
+    "Return structured findings: data only."
 )
 ANALYZER_PROMPT = (
     "You are a business strategy analyst. Evaluate the ONE option you are given: "
@@ -65,7 +65,7 @@ def analyzer_agent(option_name: str, option_description: str, research_context: 
     """Analyze one specific decision option. Call once per option (A, B, C).
 
     Args:
-        option_name: Short name (e.g., 'Option A — Exclusive Premium')
+        option_name: Short name (e.g., 'Option A: Exclusive Premium')
         option_description: Full description with price and approach
         research_context: Research findings from researcher_agent
     """

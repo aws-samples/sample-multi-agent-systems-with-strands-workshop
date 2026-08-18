@@ -20,7 +20,7 @@ Model options (pass model= to each Agent to switch):
 """
 
 import sys, os, time, asyncio
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent, tool
 from strands.multiagent import GraphBuilder

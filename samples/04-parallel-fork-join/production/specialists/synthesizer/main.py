@@ -1,6 +1,6 @@
 """Synthesizer specialist Runtime.
 Receives brief + all analyses and writes the executive leadership memo.
-Deployed independently — called last by the Orchestrator Runtime.
+Deployed independently: called last by the Orchestrator Runtime.
 """
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

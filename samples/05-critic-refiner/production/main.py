@@ -1,5 +1,5 @@
 """M4 Production: Critic-Refiner on AgentCore Runtime.
-Pattern: GraphBuilder Writer + Critic quality loop (single runtime — SDK manages cycle state).
+Pattern: GraphBuilder Writer + Critic quality loop (single runtime: SDK manages cycle state).
 
 Local test:  python main.py
 Deploy:      agentcore create → agentcore add → agentcore deploy
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 # ── Research tools ─────────────────────────────────────────────────────────
-# Default: mock business intelligence tools — no setup needed.
+# Default: mock business intelligence tools, no setup needed.
 # Optional: replace with AgentCore Web Search for live market data:
 #
 #   from strands.tools.mcp.mcp_client import MCPClient

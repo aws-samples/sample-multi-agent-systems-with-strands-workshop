@@ -1,4 +1,4 @@
-"""M2 Sequential Chain — Orchestrator Runtime.
+"""M2 Sequential Chain: Orchestrator Runtime.
 Calls Researcher → Analyst → Synthesizer Runtimes in sequence.
 Each specialist Runtime is deployed separately and its ARN is injected via env vars.
 

@@ -1,8 +1,8 @@
-"""M7 Capstone — Orchestrator Runtime.
+"""M7 Capstone: Orchestrator Runtime.
 Coordinates the full Decision-Memo pipeline across specialist Runtimes:
   1. Researcher Runtime (sequential)
   2. Analyzer Runtime × 3 in PARALLEL (fork-join)
-  3. Critic-Refiner Runtime (quality gate — single runtime, GraphBuilder cycle inside)
+  3. Critic-Refiner Runtime (quality gate: single runtime, GraphBuilder cycle inside)
 
 Environment variables required:
   RESEARCHER_RUNTIME_ARN

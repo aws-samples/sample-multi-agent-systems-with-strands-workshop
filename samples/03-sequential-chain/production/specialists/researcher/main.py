@@ -1,6 +1,6 @@
 """Researcher specialist Runtime.
 Receives a research topic and returns structured market findings.
-Deployed independently — called by the Orchestrator Runtime.
+Deployed independently: called by the Orchestrator Runtime.
 """
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -12,7 +12,7 @@ app = BedrockAgentCoreApp()
 
 SYSTEM_PROMPT = (
     "You are a market research specialist. Use your tools to gather company data, "
-    "industry benchmarks, and competitor intelligence. Return structured findings — data only."
+    "industry benchmarks, and competitor intelligence. Return structured findings: data only."
 )
 
 

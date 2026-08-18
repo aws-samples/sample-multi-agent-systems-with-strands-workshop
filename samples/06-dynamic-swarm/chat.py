@@ -1,7 +1,7 @@
 """Interactive chat for Module 5: Dynamic Swarm.
 
 Runs the 3-agent swarm (Researcher → Analyst → Writer) where agents
-hand off autonomously — no fixed routing.
+hand off autonomously: no fixed routing.
 
     cd samples/05-dynamic-swarm
     pip install -r requirements.txt
@@ -18,7 +18,7 @@ Model options (pass model= to each Agent to switch):
 """
 
 import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent
 from strands.multiagent import Swarm

@@ -1,5 +1,5 @@
 """
-Cleanup script — deletes all AWS resources created by this module's deployment.
+Cleanup script: deletes all AWS resources created by this module's deployment.
 
 Usage:
     python cleanup.py --runtime-name sequential-chain
@@ -57,7 +57,7 @@ def delete_runtime_endpoint(runtime_id: str):
                     agentcore.get_agent_runtime_endpoint(
                         agentRuntimeId=runtime_id, endpointName=ep_id
                     )
-                    time.sleep(5)  # nosemgrep: arbitrary-sleep — polling for resource deletion
+                    time.sleep(5)  # nosemgrep: arbitrary-sleep: polling for resource deletion
                 except agentcore.exceptions.ResourceNotFoundException:
                     print(f"  Endpoint {ep_id} deleted.")
                     break
@@ -71,7 +71,7 @@ def delete_runtime(runtime_arn: str, runtime_id: str):
     for _ in range(30):
         try:
             agentcore.get_agent_runtime(agentRuntimeId=runtime_id)
-            time.sleep(5)  # nosemgrep: arbitrary-sleep — polling for resource deletion
+            time.sleep(5)  # nosemgrep: arbitrary-sleep: polling for resource deletion
         except agentcore.exceptions.ResourceNotFoundException:
             print("  Runtime deleted.")
             return

@@ -6,7 +6,7 @@ the agent keeps its context across turns.
 
 From the cloned repo root:
 
-    cd samples/01-strands-foundations
+    cd samples/02-single-agent
     pip install -r requirements.txt
     python chat.py
 
@@ -14,7 +14,7 @@ Type 'quit', 'exit', or Ctrl+C to stop.
 
 Model options
 ─────────────
-Claude Sonnet 4 (default — requires Bedrock model access enabled):
+Claude Sonnet 4 (default: requires Bedrock model access enabled):
     from strands.models import BedrockModel
     model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0")
 
@@ -36,14 +36,14 @@ You help business leaders gather data and context before making strategic decisi
 Use your available tools to look up company data, market benchmarks, and competitor information.
 
 Guidelines:
-- Always use tools to answer questions — never guess when real data is available.
+- Always use tools to answer questions: never guess when real data is available.
 - Be concise and data-driven.
 - Surface the most relevant numbers for the decision at hand.
 - If asked about a company or competitor not in your tools, say so clearly."""
 
 
 def main():
-    # One Agent instance reused across all turns — its conversation history
+    # One Agent instance reused across all turns, its conversation history
     # lives in agent.messages, which is what makes it multi-turn.
     agent = Agent(
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],

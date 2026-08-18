@@ -1,6 +1,6 @@
 """Analyzer specialist Runtime (single option).
 Receives one decision option + research context and returns a structured assessment.
-Deployed as ONE Runtime — called 3 times in parallel (Options A, B, C) by the Orchestrator.
+Deployed as ONE Runtime: called 3 times in parallel (Options A, B, C) by the Orchestrator.
 """
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

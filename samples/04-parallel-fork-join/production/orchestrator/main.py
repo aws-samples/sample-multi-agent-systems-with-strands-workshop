@@ -1,4 +1,4 @@
-"""M3 Parallel Fork-Join — Orchestrator Runtime.
+"""M3 Parallel Fork-Join: Orchestrator Runtime.
 1. Calls Researcher Runtime (sequential)
 2. Calls Analyzer Runtime 3 times in PARALLEL for Options A, B, C
 3. Calls Synthesizer Runtime with merged analyses
@@ -39,7 +39,7 @@ def call_runtime(arn: str, session_id: str, prompt: str) -> str:
 
 
 async def call_runtime_async(arn: str, session_id: str, prompt: str) -> str:
-    """Non-blocking wrapper — runs invoke_agent_runtime in a thread pool."""
+    """Non-blocking wrapper: runs invoke_agent_runtime in a thread pool."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, call_runtime, arn, session_id, prompt)
 
@@ -55,7 +55,7 @@ def invoke(payload, context):
     research = call_runtime(RESEARCHER_ARN, session_id,
                             f"Gather market data for this decision:\n{brief}")
 
-    logger.info("session=%s | step=fork — 3 analyzers in parallel", session_id)
+    logger.info("session=%s | step=fork: 3 analyzers in parallel", session_id)
 
     async def fork():
         return await asyncio.gather(

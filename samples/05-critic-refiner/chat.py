@@ -17,7 +17,7 @@ Model options (pass model= to each Agent to switch):
 """
 
 import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent
 from strands.multiagent import GraphBuilder
@@ -25,7 +25,7 @@ from decision_brief_tools import get_company_data, get_market_benchmarks, get_co
 
 RESEARCHER_PROMPT = '''You are a market research specialist.
 Gather company data, benchmarks, and competitor intelligence using your tools.
-Return structured findings — data only.'''
+Return structured findings: data only.'''
 
 WRITER_PROMPT = (
     "You are an executive memo writer. Write a COMPLETE leadership memo with exactly these 5 labeled sections:\n"
@@ -80,11 +80,11 @@ def run_critic_refiner(brief: str) -> None:
         system_prompt=RESEARCHER_PROMPT,
         callback_handler=None,
     )
-    print("\nStep 1/2 — Researcher gathering context...")
+    print("\nStep 1/2: Researcher gathering context...")
     research = str(researcher(f"Gather data for this decision:\n{brief}"))
-    print(f"  Done — {len(research)} chars")
+    print(f"  Done: {len(research)} chars")
 
-    print("\nStep 2/2 — Critic-Refiner loop:")
+    print("\nStep 2/2: Critic-Refiner loop:")
     graph = build_graph()
     t0 = time.time()
     result = graph(f"{brief}\n\nResearch:\n{research}")

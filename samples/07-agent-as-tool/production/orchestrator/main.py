@@ -1,6 +1,6 @@
-"""M6 Agent-as-Tool — Orchestrator Runtime.
+"""M6 Agent-as-Tool: Orchestrator Runtime.
 Uses a Strands Agent that treats specialist Runtimes as callable @tool functions.
-The LLM decides routing and argument construction — no explicit Python routing.
+The LLM decides routing and argument construction: no explicit Python routing.
 
 Environment variables required:
   RESEARCHER_RUNTIME_ARN

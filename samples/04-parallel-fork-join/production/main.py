@@ -1,4 +1,4 @@
-"""M3 Production: Parallel Fork-Join — GraphBuilder parallel topology.
+"""M3 Production: Parallel Fork-Join: GraphBuilder parallel topology.
 Pattern: Researcher → [Analyzer A ∥ B ∥ C] → Synthesizer
 Uses GraphBuilder (Strands-native), not asyncio.gather.
 

@@ -1,6 +1,6 @@
 """Critic-Refiner specialist Runtime.
 Receives brief + analyses and runs the GraphBuilder Writer→Critic quality loop.
-Returns the final approved memo. Deployed as single runtime — SDK manages cycle state.
+Returns the final approved memo. Deployed as single runtime: SDK manages cycle state.
 """
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

@@ -1,7 +1,7 @@
 """Interactive chat for Module 3: Parallel / Fork-Join.
 
-Uses GraphBuilder parallel topology — the Strands-native way to run agents
-in parallel. No asyncio needed — the SDK handles execution.
+Uses GraphBuilder parallel topology: the Strands-native way to run agents
+in parallel. No asyncio needed: the SDK handles execution.
 
     cd samples/03-parallel-fork-join
     pip install -r requirements.txt
@@ -14,7 +14,7 @@ Model options (pass model= to each Agent to switch):
 """
 
 import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent
 from strands.multiagent import GraphBuilder

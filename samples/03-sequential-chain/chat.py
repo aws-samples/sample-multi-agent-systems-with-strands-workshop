@@ -19,26 +19,26 @@ Model options (pass model= to each Agent to switch):
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "01-strands-foundations"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 RESEARCHER_PROMPT = '''You are a market research specialist.
 Given a decision brief, gather relevant company data, market benchmarks, and competitor intelligence.
-Use your tools. Return structured findings — data only, no recommendations.'''
+Use your tools. Return structured findings: data only, no recommendations.'''
 
 ANALYST_PROMPT = '''You are a business strategy analyst.
 Given market research findings and a decision brief, analyze each option (A, B, C).
 For each option produce: strengths, weaknesses, implementation complexity (Low/Med/High),
 top 2 risks with mitigations, and a verdict (Proceed / Proceed with caution / Do not proceed).
-Return structured analysis only — no executive memo yet.'''
+Return structured analysis only: no executive memo yet.'''
 
 SYNTHESIZER_PROMPT = '''You are an executive communications specialist.
 Given research findings, option analyses, and the original brief, write a leadership memo:
 
 ## Decision Memo: [Title]
-**Recommendation**: [one sentence — which option and why]
+**Recommendation**: [one sentence: which option and why]
 
 ### Options at a Glance
 | | Option A | Option B | Option C |
@@ -64,15 +64,15 @@ def run_chain(brief: str) -> str:
     analyst = Agent(system_prompt=ANALYST_PROMPT, callback_handler=None)
     synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT)
 
-    print("\nStep 1/3 — Researcher gathering data...")
+    print("\nStep 1/3: Researcher gathering data...")
     research = researcher(f"Gather market data for this decision:\n{brief}")
 
-    print("Step 2/3 — Analyst evaluating options...")
+    print("Step 2/3: Analyst evaluating options...")
     analysis = analyst(
         f"Original brief:\n{brief}\n\nResearch findings:\n{research}"
     )
 
-    print("Step 3/3 — Synthesizer writing memo...\n")
+    print("Step 3/3: Synthesizer writing memo...\n")
     memo = synthesizer(
         f"Original brief:\n{brief}\n\n"
         f"Research:\n{research}\n\n"
@@ -82,7 +82,7 @@ def run_chain(brief: str) -> str:
 
 
 def main():
-    print("Sequential Chain — Decision Intelligence Pipeline")
+    print("Sequential Chain: Decision Intelligence Pipeline")
     print("Submit a decision brief. Type 'quit' to exit.\n")
     print("Default brief: NovaCart Premium Tier. Press Enter to use it.\n")
 

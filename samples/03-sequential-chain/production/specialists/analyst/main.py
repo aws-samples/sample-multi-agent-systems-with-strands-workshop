@@ -1,6 +1,6 @@
 """Analyst specialist Runtime.
 Receives a decision brief + research context and returns structured analysis of all options.
-Deployed independently — called by the Orchestrator Runtime.
+Deployed independently: called by the Orchestrator Runtime.
 """
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
