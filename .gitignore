@@ -41,7 +41,6 @@ app/MyAgent/
 npm-debug.log*
 
 # Diagram sources (keep only exported PNGs)
-*.drawio
 
 # Jupyter checkpoints
 .ipynb_checkpoints/

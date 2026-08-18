@@ -28,27 +28,7 @@ Each module from **02 to 07** includes a `production/` subfolder - a self-contai
 
 The **Decision-Memo System** - a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo with options A/B/C, risks, success metrics, and a recommendation.
 
-```
-Decision Brief (input)
-  "Evaluate NovaCart Premium Tier. Target: +15% CLV."
-         │
-         ▼ Orchestrator (P5: Agent-as-Tool)
-  ┌─────────────┐
-  │  Researcher │  P1 Sequential - gathers data with tools
-  └──────┬──────┘
-         │
-   ┌─────┴─────┬──────────┐
-   ▼           ▼          ▼    P2 Fork-Join - all 3 run in parallel
- Analyzer A  Analyzer B  Analyzer C
-   └─────┬─────┴──────────┘
-         │
-  ┌──────▼──────┐
-  │   Writer    │  P3 Critic-Refiner - cycles until APPROVED
-  │   Critic    │
-  └──────┬──────┘
-         ▼
-   Leadership Memo (output)
-```
+![Decision-Memo System: Decision Brief enters an Orchestrator (Agent-as-Tool) that coordinates a Researcher (Sequential), three parallel Analyzers (Fork-Join), and a Critic-Refiner quality loop, producing a Leadership Memo](./samples/07-capstone/architecture.png)
 
 ---
 
