@@ -1,0 +1,21 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="Agent-as-Tool" id="d9df49d02eb84d19">
+    <mxGraphModel dx="1800" dy="1000" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="740" pageHeight="320" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" value="Agent-as-Tool: LLM orchestrator delegates via @tool" style="text;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=11;fontStyle=1;fillColor=#ffffff;strokeColor=none;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="30" y="15" width="700" height="30" as="geometry" /></mxCell>
+        <mxCell id="orch" value="Orchestrator (LLM routing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#232F3E;strokeColor=#545B64;fontColor=#ffffff;fontSize=13;fontStyle=1;arcSize=20;" vertex="1" parent="1"><mxGeometry x="270" y="60" width="220" height="55" as="geometry" /></mxCell>
+        <mxCell id="res" value="@tool researcher_agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#01A88D;strokeColor=#017A65;fontColor=#ffffff;fontSize=13;fontStyle=1;arcSize=20;" vertex="1" parent="1"><mxGeometry x="60" y="190" width="170" height="55" as="geometry" /></mxCell>
+        <mxCell id="ana" value="@tool analyzer_agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#01A88D;strokeColor=#017A65;fontColor=#ffffff;fontSize=13;fontStyle=1;arcSize=20;" vertex="1" parent="1"><mxGeometry x="270" y="190" width="170" height="55" as="geometry" /></mxCell>
+        <mxCell id="syn" value="@tool synthesizer_agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#01A88D;strokeColor=#017A65;fontColor=#ffffff;fontSize=13;fontStyle=1;arcSize=20;" vertex="1" parent="1"><mxGeometry x="480" y="190" width="170" height="55" as="geometry" /></mxCell>
+        <mxCell id="e1" value="1. research" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;flowAnimation=1;strokeWidth=2;strokeColor=#545B64;endArrow=block;endFill=1;" edge="1" parent="1" source="orch" target="res"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="2. analyze ×3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;flowAnimation=1;strokeWidth=2;strokeColor=#545B64;endArrow=block;endFill=1;" edge="1" parent="1" source="orch" target="ana"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="3. synthesize" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;flowAnimation=1;strokeWidth=2;strokeColor=#545B64;endArrow=block;endFill=1;" edge="1" parent="1" source="orch" target="syn"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="s1" value="Docstring = routing logic" style="text;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=11;fontStyle=1;fillColor=#ffffff;strokeColor=none;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="60" y="255" width="170" height="22" as="geometry" /></mxCell>
+        <mxCell id="s2" value="callback_handler=None" style="text;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=11;fontStyle=1;fillColor=#ffffff;strokeColor=none;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="270" y="255" width="170" height="22" as="geometry" /></mxCell>
+        <mxCell id="s3" value="streams to user" style="text;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=11;fontStyle=1;fillColor=#ffffff;strokeColor=none;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="480" y="255" width="170" height="22" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
