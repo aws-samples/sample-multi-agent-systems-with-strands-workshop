@@ -4,6 +4,9 @@
 
 ## Architecture
 
+![Parallel Fork-Join: Researcher → asyncio.gather(Analyzer A, B, C) → Synthesizer → Memo](./architecture.png)
+
+
 ```
 Decision Brief
       │

@@ -4,6 +4,9 @@
 
 ## Architecture
 
+![Agent-as-Tool: Orchestrator at top, @tool researcher_agent, analyzer_agent, synthesizer_agent below](./architecture.png)
+
+
 ```
 Decision Brief
        │

@@ -4,6 +4,9 @@
 
 ## Architecture
 
+![Sequential Chain: Decision Brief → Researcher → Analyst → Synthesizer → Leadership Memo](./architecture.png)
+
+
 ```
 Decision Brief
       │

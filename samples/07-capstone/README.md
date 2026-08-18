@@ -4,6 +4,9 @@ Combine all four multi-agent patterns into one complete Decision Intelligence pi
 
 ## Architecture
 
+![Decision-Memo Capstone on AgentCore: Client → Orchestrator Runtime → Researcher, Analyzers (parallel), Critic-Refiner → Amazon Bedrock + CloudWatch](./architecture.png)
+
+
 ```
 Decision Brief
        │

@@ -4,6 +4,9 @@
 
 ## Architecture
 
+![Dynamic Swarm: Researcher, Analyst, Writer with shared working memory and autonomous handoffs](./architecture.png)
+
+
 ```
 Task (brief)
      │
