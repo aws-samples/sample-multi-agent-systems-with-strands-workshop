@@ -92,12 +92,9 @@ See pricing: [Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/?tr
 
 ## How do I set up the environment?
 
-This workshop runs in a hosted VS Code environment (AWS Workshop Studio) with all dependencies pre-installed. To run locally:
+This workshop runs in a hosted VS Code environment (AWS Workshop Studio) with all dependencies pre-installed. To run locally, install [uv](https://docs.astral.sh/uv/) and then:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install strands-agents bedrock-agentcore nest-asyncio
 aws configure   # Strands uses Amazon Bedrock by default
 ```
 
@@ -105,7 +102,8 @@ Each module has its own `requirements.txt`. Install only what you need:
 
 ```bash
 cd samples/02-sequential-chain
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ### Deploy modules require the AgentCore CLI (Node.js 20+)
