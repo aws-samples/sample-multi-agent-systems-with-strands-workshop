@@ -40,6 +40,14 @@ def invoke(payload, context):
     prompt = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not prompt:
         raise ValueError("Missing required field: prompt")
+
+    # ── OTEL: propagate session ID across all spans ──────────────────
+    import uuid as _uuid
+    from opentelemetry import baggage as _baggage, context as _ctx
+    _session_id = (payload.get("session_id") if isinstance(payload, dict) else None) or str(_uuid.uuid4())
+    _otel_ctx = _baggage.set_baggage("session.id", _session_id)
+    _ctx.attach(_otel_ctx)
+    logger.info("session.id=%s module=m1-decision-agent", _session_id)
     agent = Agent(tools=RESEARCH_TOOLS, system_prompt=SYSTEM_PROMPT, callback_handler=None)
     return str(agent(prompt)).strip()
 

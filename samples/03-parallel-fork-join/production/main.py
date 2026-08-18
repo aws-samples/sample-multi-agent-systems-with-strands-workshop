@@ -41,6 +41,14 @@ def invoke(payload, context):
     if not brief:
         raise ValueError("Missing required field: prompt")
 
+    # ── OTEL: propagate session ID across all spans ──────────────────
+    import uuid as _uuid
+    from opentelemetry import baggage as _baggage, context as _ctx
+    _session_id = (payload.get("session_id") if isinstance(payload, dict) else None) or str(_uuid.uuid4())
+    _otel_ctx = _baggage.set_baggage("session.id", _session_id)
+    _ctx.attach(_otel_ctx)
+    logger.info("session.id=%s module=m3-parallel-forkjoin", _session_id)
+
     researcher = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT, callback_handler=None)
     research_text = str(researcher(f"Gather data for: {brief}"))
 
