@@ -50,7 +50,9 @@ agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium
 # boto3: production invocation pattern
 import json, uuid, boto3
 
-client = boto3.client("bedrock-agentcore", region_name="us-east-1")
+from botocore.config import Config
+client = boto3.client("bedrock-agentcore", region_name="us-east-1",
+    config=Config(read_timeout=300))  # pipelines can take 60-180s
 response = client.invoke_agent_runtime(
     agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT>:runtime/<ARN-suffix>",
     runtimeSessionId=str(uuid.uuid4()),   # 33+ chars; uuid4 satisfies this
