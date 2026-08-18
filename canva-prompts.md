@@ -2,7 +2,6 @@
 
 Prompts para **Canva AI Magic Design**. Copiar el bloque de código y pegarlo en Canva AI.
 
-> **Si genera portrait:** Resize → Custom → 1920 × 1080 → Resize → Cmd+A → stretch.
 
 ---
 

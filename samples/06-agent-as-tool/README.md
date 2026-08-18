@@ -7,26 +7,6 @@
 ![Agent-as-Tool: Orchestrator at top, @tool researcher_agent, analyzer_agent, synthesizer_agent below](./architecture.png)
 
 
-```
-Decision Brief
-       │
-       ▼
-┌──────────────────────────────────────────┐
-│             ORCHESTRATOR                 │
-│  tools = [researcher_agent,              │
-│            analyzer_agent,               │
-│            synthesizer_agent]            │
-└───────────┬──────────────────────────────┘
-            │ LLM decides: who, when, what parameters
-            │
-    ┌───────┼──────────┬──────────────┐
-    ▼       ▼          ▼              ▼
-researcher analyzer_A  analyzer_B  synthesizer
- @tool      @tool       @tool       @tool
- Agent(...)  Agent(...)  Agent(...)  Agent(...)
- silent     silent      silent      streams
-```
-
 ## What you'll build
 
 An LLM orchestrator that uses three specialist agents as tools. The model decides: call researcher first → call analyzer for each option → call synthesizer. No Python routing code.

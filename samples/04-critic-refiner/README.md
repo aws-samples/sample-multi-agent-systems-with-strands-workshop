@@ -7,23 +7,6 @@
 ![Critic-Refiner: Writer → Critic → APPROVED (exit) or REVISION NEEDED (cycle back to Writer)](./architecture.png)
 
 
-```
-Decision Brief + Research
-          │
-          ▼
-    ┌───────────┐
-    │  Writer   │◄──────────────────────┐
-    └─────┬─────┘                       │
-          │ draft memo                  │ feedback: REVISION NEEDED
-          ▼                             │
-    ┌───────────┐  REVISION NEEDED: ───►┘
-    │  Critic   │
-    └─────┬─────┘
-          │ APPROVED
-          ▼
-    Final memo
-```
-
 ## What you'll build
 
 A `GraphBuilder` feedback loop: Writer → Critic → [APPROVED: done | REVISION NEEDED: cycle back to Writer].

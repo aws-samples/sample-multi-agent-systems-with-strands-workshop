@@ -7,35 +7,6 @@ Combine all four multi-agent patterns into one complete Decision Intelligence pi
 ![Decision-Memo Capstone on AgentCore: Client → Orchestrator Runtime → Researcher, Analyzers (parallel), Critic-Refiner → Amazon Bedrock + CloudWatch](./architecture.png)
 
 
-```
-Decision Brief
-       │
-       ▼
-┌──────────────────────────────────────────────────────┐
-│         ORCHESTRATOR (Pattern 5: Agent-as-Tool)      │
-│  tools = [researcher_agent,                          │
-│            parallel_analyzers,                       │
-│            critic_refiner]                           │
-└───────────┬──────────────────────────────────────────┘
-            │ LLM decides routing
-   ┌────────▼────────┐
-   │ researcher_agent │  Pattern 1: Sequential
-   │ uses tools       │  gathers shared market context
-   └────────┬────────┘
-            │
-   ┌────────▼──────────────────────────────┐
-   │   parallel_analyzers                  │  Pattern 2: Fork-Join
-   │   asyncio.gather(A ∥ B ∥ C)          │  3 analyzers simultaneously
-   └────────┬──────────────────────────────┘
-            │
-   ┌────────▼──────────────────────────────┐
-   │  critic_refiner                       │  Pattern 3: Critic-Refiner
-   │  Writer → Critic → [APPROVED | retry] │  quality gate
-   └────────┬──────────────────────────────┘
-            │
-     Leadership Memo
-```
-
 ## Patterns combined
 
 | Pattern | Component | Strands API |

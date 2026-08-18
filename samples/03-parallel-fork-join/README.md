@@ -7,25 +7,6 @@
 ![Parallel Fork-Join: Researcher → asyncio.gather(Analyzer A, B, C) → Synthesizer → Memo](./architecture.png)
 
 
-```
-Decision Brief
-      │
-      ▼
- ┌────────────┐  (sequential)
- │ Researcher │  gathers shared context
- └──────┬─────┘
-        │ research_text (shared)
-   ┌────┴────┬────────┐
-   ▼         ▼        ▼    asyncio.gather → all 3 run at once
- Analyzer A  B        C
-   └────┬────┴────────┘
-        │ join: wait for all 3
-        ▼
- ┌─────────────┐  (sequential)
- │ Synthesizer │  merges all analyses
- └─────────────┘
-```
-
 ## What you'll build
 
 A pipeline that forks three Option Analyzers (A, B, C) in parallel using `asyncio.gather` and `invoke_async`, then merges their analyses into a final memo.

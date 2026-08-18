@@ -7,25 +7,6 @@
 ![Sequential Chain: Decision Brief → Researcher → Analyst → Synthesizer → Leadership Memo](./architecture.png)
 
 
-```
-Decision Brief
-      │
-      ▼
- ┌────────────┐  callback_handler=None
- │ Researcher │  gathers data with tools
- └─────┬──────┘
-       │ str(result)
-       ▼
- ┌────────────┐  callback_handler=None
- │  Analyst   │  evaluates all three options
- └─────┬──────┘
-       │ str(result)
-       ▼
- ┌─────────────┐  streams to participant
- │ Synthesizer │  writes executive memo
- └─────────────┘
-```
-
 ## What you'll build
 
 A 3-stage pipeline: Researcher → Analyst → Synthesizer. Each agent has a narrow system prompt and a small context window — only what it needs for its role.
