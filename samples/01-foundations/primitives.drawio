@@ -1,0 +1,81 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="AI Agent Primitives" id="primitives">
+    <mxGraphModel dx="1400" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="0" arrows="0" fold="0" page="0" pageScale="1" pageWidth="1200" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Central AGENT box -->
+        <mxCell id="agent" value="AGENT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#00897B;strokeColor=#00695C;fontColor=#ffffff;fontSize=20;fontStyle=1;arcSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="475" y="175" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Model (LLM) - LEFT -->
+        <mxCell id="model_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="160" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="model_title" value="Model (LLM)" style="text;html=1;fontColor=#00E5CC;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="175" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="model_desc" value="The reasoning engine&#xa;plans, decides, responds" style="text;html=1;fontColor=#B0C4CE;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="205" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Tools - TOP -->
+        <mxCell id="tools_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="390" y="30" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="tools_title" value="Tools" style="text;html=1;fontColor=#00E5CC;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="390" y="45" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="tools_desc" value="Functions, APIs, code&#xa;the agent can call to act" style="text;html=1;fontColor=#B0C4CE;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="390" y="75" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Prompt & Instructions - RIGHT -->
+        <mxCell id="prompt_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="800" y="160" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="prompt_title" value="Prompt &amp; Instructions" style="text;html=1;fontColor=#00E5CC;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="800" y="175" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="prompt_desc" value="Role, goals, and guardrails&#xa;that steer behaviour" style="text;html=1;fontColor=#B0C4CE;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="800" y="205" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Memory & Context - BOTTOM -->
+        <mxCell id="memory_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="390" y="295" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="memory_title" value="Memory &amp; Context" style="text;html=1;fontColor=#00E5CC;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="390" y="310" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="memory_desc" value="Conversation history + state&#xa;carried across turns" style="text;html=1;fontColor=#B0C4CE;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="390" y="340" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Connecting lines (no arrows, just straight lines) -->
+        <!-- Left: Model ↔ Agent -->
+        <mxCell id="line_model" style="edgeStyle=none;html=1;endArrow=none;startArrow=none;strokeColor=#00897B;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="model_box" target="agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Top: Tools ↔ Agent -->
+        <mxCell id="line_tools" style="edgeStyle=none;html=1;endArrow=none;startArrow=none;strokeColor=#00897B;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tools_box" target="agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Right: Agent ↔ Prompt -->
+        <mxCell id="line_prompt" style="edgeStyle=none;html=1;endArrow=none;startArrow=none;strokeColor=#00897B;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="agent" target="prompt_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Bottom: Agent ↔ Memory -->
+        <mxCell id="line_memory" style="edgeStyle=none;html=1;endArrow=none;startArrow=none;strokeColor=#00897B;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="agent" target="memory_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
