@@ -1,6 +1,6 @@
 # Module 3: Parallel Fork-Join
 
-**Pattern 2 from the deck.** Fork independent sub-tasks to run simultaneously, then merge results — latency drops to the slowest single worker.
+**Pattern 2.** Fork independent sub-tasks to run simultaneously, then merge results — latency drops to the slowest single worker.
 
 ## Architecture
 

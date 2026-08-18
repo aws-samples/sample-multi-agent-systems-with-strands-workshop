@@ -1,6 +1,6 @@
 # Module 5: Dynamic Swarm
 
-**Pattern 4 from the deck.** Agents hand off autonomously — no fixed path, no orchestrator. The route through the team emerges at runtime based on what each agent decides to do next.
+**Pattern 4.** Agents hand off autonomously — no fixed path, no orchestrator. The route through the team emerges at runtime based on what each agent decides to do next.
 
 ## Architecture
 

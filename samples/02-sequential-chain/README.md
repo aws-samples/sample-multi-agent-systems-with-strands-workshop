@@ -1,6 +1,6 @@
 # Module 2: Sequential Chain
 
-**Pattern 1 from the deck.** Break the single-agent ceiling with a 3-stage pipeline where each agent has one focused job and passes its output to the next.
+**Pattern 1.** Break the single-agent ceiling with a 3-stage pipeline where each agent has one focused job and passes its output to the next.
 
 ## Architecture
 

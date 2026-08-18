@@ -1,6 +1,6 @@
 # Module 6: Agent-as-Tool
 
-**Pattern 5 from the deck.** Wrap specialized agents as callable tools so an LLM orchestrator can delegate like a manager to experts — routing decided by the model, not by Python code.
+**Pattern 5.** Wrap specialized agents as callable tools so an LLM orchestrator can delegate like a manager to experts — routing decided by the model, not by Python code.
 
 ## Architecture
 

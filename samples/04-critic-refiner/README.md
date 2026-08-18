@@ -1,6 +1,6 @@
 # Module 4: Critic-Refiner
 
-**Pattern 3 from the deck.** Add a quality gate — the Writer drafts the memo, the Critic evaluates it against a checklist, and if the bar is not met the memo cycles back for revision until approved.
+**Pattern 3.** Add a quality gate — the Writer drafts the memo, the Critic evaluates it against a checklist, and if the bar is not met the memo cycles back for revision until approved.
 
 ## Architecture
 
