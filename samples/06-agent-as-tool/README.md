@@ -44,32 +44,32 @@ orchestrator = Agent(tools=[researcher, analyst, writer])
 orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 ```
 
-## Strands API
+## Strands Agents SDK
+
+The Agents-as-Tools pattern is documented at [https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+The Strands Agents SDK supports three ways to use agents as tools:
+passing agents directly in `tools[]`, using `.as_tool()`, or wrapping with the `@tool` decorator.
 
 ```python
-from strands import Agent, tool
+# Option 1 — pass Agent directly (SDK auto-converts; single string input)
+orchestrator = Agent(tools=[researcher, analyst, writer])
 
+# Option 2 — .as_tool() for custom name/description
+orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
+
+# Option 3 — @tool decorator (full parameter control — used in this module)
 @tool
 def researcher_agent(topic: str) -> str:
-    """Research market context... (orchestrator reads this docstring)
-    Args:
-        topic: The decision topic to research
-    """
-    worker = Agent(tools=[...], system_prompt=RESEARCHER_PROMPT, callback_handler=None)
+    \"\"\"Research market context...\"\"\"\"
+    worker = Agent(tools=[...], system_prompt=..., callback_handler=None)
     return str(worker(topic))
-
-orchestrator = Agent(
-    tools=[researcher_agent, analyzer_agent, synthesizer_agent],
-    system_prompt=ORCHESTRATOR_PROMPT,
-)
-result = orchestrator(DECISION_BRIEF)
-
-# Inspect tool calls
-for msg in orchestrator.messages:
-    for block in msg.get("content", []):
-        if "toolUse" in block:
-            print(block["toolUse"]["name"])
 ```
+
+See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+
+**Pricing:**
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
 
 ## Run
 

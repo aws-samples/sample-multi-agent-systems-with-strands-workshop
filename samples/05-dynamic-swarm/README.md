@@ -49,36 +49,36 @@ A 3-agent Swarm (Researcher → Analyst → Writer) where routing is autonomous.
 - `result.results["agent_name"]` — output from a specific agent
 - `result.accumulated_usage` — total token usage across all agents
 
-## Strands API
+## Strands Agents SDK
+
+The Dynamic Swarm uses [`Swarm`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`.
+The Swarm automatically equips each agent with a `handoff_to_agent` tool — agents use this to transfer control autonomously.
+The `description` field on each agent is what peers read to decide who to hand off to.
+See the [Swarm documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
 from strands import Agent
 from strands.multiagent import Swarm
 
-researcher = Agent(
-    name="researcher",
-    description="Market research specialist with tools for company data...",
+researcher = Agent(name="researcher",
+    description="Market research specialist with tools...",   # routing signal
     system_prompt="...",
-    tools=[...],
-    callback_handler=None,
-)
-analyst = Agent(name="analyst", description="...", system_prompt="...", callback_handler=None)
-writer  = Agent(name="writer",  description="...", system_prompt="...", callback_handler=None)
+    tools=[...])
+analyst = Agent(name="analyst", description="...", system_prompt="...")
+writer  = Agent(name="writer",  description="...", system_prompt="...")
 
-swarm = Swarm(
-    [researcher, analyst, writer],
+swarm = Swarm([researcher, analyst, writer],
     entry_point=researcher,
     max_handoffs=6,
     max_iterations=10,
-    execution_timeout=180.0,
-)
+    execution_timeout=180.0)
 result = swarm(task)
-
-# Access results
-path  = [n.node_id for n in result.node_history]
-memo  = str(result.results["writer"])
-usage = result.accumulated_usage
+# result.status, result.node_history, result.results["agent_name"]
 ```
+
+**Pricing:**
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
 
 ## Swarm vs Sequential Chain
 

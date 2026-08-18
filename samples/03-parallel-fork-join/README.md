@@ -26,25 +26,28 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `asynci
 - `nest_asyncio.apply()` — required for `asyncio.gather` inside Jupyter notebooks
 - Wall-clock time ≈ slowest single analyzer (not sum of all three)
 
-## Strands API
+## Strands Agents SDK
+
+Parallel fork-join uses `Agent.invoke_async()` — the async version of `agent()` that returns a coroutine.
+`asyncio.gather()` runs multiple coroutines simultaneously and returns when all complete.
+See the [Strands Agents SDK documentation](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
-import asyncio
-import nest_asyncio
-nest_asyncio.apply()
-
 from strands import Agent
+import asyncio
 
-analyzer_a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-analyzer_b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-analyzer_c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-
-result_a, result_b, result_c = asyncio.run(asyncio.gather(
-    analyzer_a.invoke_async(f"Option A...\nResearch: {research_text}"),
-    analyzer_b.invoke_async(f"Option B...\nResearch: {research_text}"),
-    analyzer_c.invoke_async(f"Option C...\nResearch: {research_text}"),
-))
+result_a, result_b, result_c = await asyncio.gather(
+    analyzer_a.invoke_async(f"Option A..."),
+    analyzer_b.invoke_async(f"Option B..."),
+    analyzer_c.invoke_async(f"Option C..."),
+)
 ```
+
+> `Agent.invoke_async()` is documented in the Strands SDK — it is the async equivalent of calling `agent(prompt)` directly.
+
+**Pricing:**
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — all 3 parallel agents call Bedrock concurrently
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — Runtime invocation costs
 
 ## Run
 

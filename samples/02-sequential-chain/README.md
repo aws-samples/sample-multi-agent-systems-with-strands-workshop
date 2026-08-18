@@ -26,19 +26,35 @@ A 3-stage pipeline: Researcher → Analyst → Synthesizer. Each agent has a nar
 - Each agent has a **small, focused context** — no single agent holds everything
 - `str(result)` — convert `AgentResult` to string for chaining
 
-## Strands API
+## Strands Agents SDK
+
+Sequential agent pipelines are implemented with the [Strands Agents SDK](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+In Strands, a sequential workflow chains agents in Python — each agent's output becomes the next agent's input.
+See the [Workflow documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/workflow/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
 from strands import Agent
 
-researcher = Agent(system_prompt=RESEARCHER_PROMPT, callback_handler=None)
-analyst    = Agent(system_prompt=ANALYST_PROMPT, callback_handler=None)
-synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT)
+researcher  = Agent(system_prompt=..., callback_handler=None)
+analyst     = Agent(system_prompt=..., callback_handler=None)
+synthesizer = Agent(system_prompt=...)
 
 research = researcher(f"Gather data for: {brief}")
-analysis = analyst(f"Brief: {brief}\n\nResearch: {research}")
-memo     = synthesizer(f"Brief: {brief}\n\nResearch: {research}\n\nAnalysis: {analysis}")
+analysis = analyst(f"Brief:
+{brief}
+
+Research:
+{research}")
+memo     = synthesizer(f"Brief:
+{brief}
+
+Analysis:
+{analysis}")
 ```
+
+**Pricing:**
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — inference costs per token
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — Runtime invocation costs
 
 ## Run
 

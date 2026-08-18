@@ -9,7 +9,7 @@ Combine all four multi-agent patterns into one complete Decision Intelligence pi
 
 ## Patterns combined
 
-| Pattern | Component | Strands API |
+| Pattern | Component | Strands Agents SDK |
 |---------|-----------|-------------|
 | P1 Sequential | Research phase | Python sequence |
 | P2 Fork-Join | Three parallel analyzers | `asyncio.gather` + `invoke_async` |

@@ -27,35 +27,31 @@ A `GraphBuilder` feedback loop: Writer → Critic → [APPROVED: done | REVISION
 - `set_max_node_executions(N)` — safety limit to prevent infinite loops
 - `reset_on_revisit(True)` — resets node state on each revisit
 
-## Strands API
+## Strands Agents SDK
+
+The Critic-Refiner pattern uses [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent` — a deterministic directed graph with optional cycle edges.
+Condition functions on edges control routing: `add_edge("critic", "writer", condition=needs_revision)` creates the feedback loop.
+See the [Graph documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
-from strands import Agent
 from strands.multiagent import GraphBuilder
-
-writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
-critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
-
-def needs_revision(state):
-    r = state.results.get("critic")
-    return bool(r) and "revision needed" in str(r.result).lower()
 
 builder = GraphBuilder()
 builder.add_node(writer, "writer")
 builder.add_node(critic, "critic")
-builder.set_entry_point("writer")
+builder.set_entry_point("writer")          # required when a cycle creates ambiguity
 builder.add_edge("writer", "critic")
 builder.add_edge("critic", "writer", condition=needs_revision)
-builder.set_max_node_executions(8)
-builder.set_execution_timeout(180)
+builder.set_max_node_executions(6)          # prevents infinite loops
+builder.set_execution_timeout(120)
 builder.reset_on_revisit(True)
-
 graph = builder.build()
-result = graph(brief_with_research)
-
-# Check execution order and critic verdicts
-print([n.node_id for n in result.execution_order])
+result = graph(prompt)
 ```
+
+**Pricing:**
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
 
 ## Critic output format — critical design rule
 
