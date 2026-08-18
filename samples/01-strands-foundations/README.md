@@ -21,11 +21,11 @@ A single agent with three mock business intelligence tools that can look up comp
 
 ## Key concepts
 
-- `@tool` decorator — Python function the LLM can call; docstring is the routing logic
-- `Agent(tools=[], system_prompt=...)` — assembles the harness
-- `agent.messages` — full conversation history (user turns, LLM responses, tool calls, tool results)
-- `result.metrics.get_summary()` — token usage, cycle count, per-tool stats
-- The ceiling — why a single agent struggles with complex, multi-dimensional tasks
+- `@tool` decorator: Python function the LLM can call; docstring is the routing logic
+- `Agent(tools=[], system_prompt=...)`: assembles the harness
+- `agent.messages`: full conversation history (user turns, LLM responses, tool calls, tool results)
+- `result.metrics.get_summary()`: token usage, cycle count, per-tool stats
+- The ceiling: why a single agent struggles with complex, multi-dimensional tasks
 
 ## Run
 
@@ -40,7 +40,7 @@ Or open `module-01.ipynb` in VS Code / JupyterLab and run cells top to bottom.
 
 | Model ID | Notes |
 |----------|-------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Default — best quality |
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Default: best quality |
 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Faster, lower cost |
 | `amazon.nova-pro-v1:0` | AWS credits / sponsored events |
 | `amazon.nova-lite-v1:0` | Cheapest option |

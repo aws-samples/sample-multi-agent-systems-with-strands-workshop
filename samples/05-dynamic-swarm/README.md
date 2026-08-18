@@ -1,6 +1,6 @@
 # Module 5: Dynamic Swarm
 
-**Pattern 4.** Agents hand off autonomously — no fixed path, no orchestrator. The route through the team emerges at runtime based on what each agent decides to do next.
+**Pattern 4.** Agents hand off autonomously: no fixed path, no orchestrator. The route through the team emerges at runtime based on what each agent decides to do next.
 
 ## Architecture
 
@@ -26,11 +26,11 @@ Task (brief)
 └──────────────┘
 ```
 
-This path is not programmed — it emerges based on agent descriptions and what each agent decides.
+This path is not programmed: it emerges based on agent descriptions and what each agent decides.
 
 ## What you'll build
 
-A 3-agent Swarm (Researcher → Analyst → Writer) where routing is autonomous. No edges are defined — each agent reads the descriptions of its peers and decides who to hand off to.
+A 3-agent Swarm (Researcher → Analyst → Writer) where routing is autonomous. No edges are defined: each agent reads the descriptions of its peers and decides who to hand off to.
 
 ## Files
 
@@ -42,17 +42,17 @@ A 3-agent Swarm (Researcher → Analyst → Writer) where routing is autonomous.
 
 ## Key concepts
 
-- `Swarm([agents], entry_point=agent)` — no routing code, agents decide
-- `description` field — the routing signal; write it for the model, not for humans
-- `handoff_to_agent` — automatically added to each agent by the SDK
-- `result.node_history` — the path that emerged at runtime
-- `result.results["agent_name"]` — output from a specific agent
-- `result.accumulated_usage` — total token usage across all agents
+- `Swarm([agents], entry_point=agent)`: no routing code, agents decide
+- `description` field: the routing signal; write it for the model, not for humans
+- `handoff_to_agent`: automatically added to each agent by the SDK
+- `result.node_history`: the path that emerged at runtime
+- `result.results["agent_name"]`: output from a specific agent
+- `result.accumulated_usage`: total token usage across all agents
 
 ## Strands Agents SDK
 
 The Dynamic Swarm uses [`Swarm`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`.
-The Swarm automatically equips each agent with a `handoff_to_agent` tool — agents use this to transfer control autonomously.
+The Swarm automatically equips each agent with a `handoff_to_agent` tool: agents use this to transfer control autonomously.
 The `description` field on each agent is what peers read to decide who to hand off to.
 See the [Swarm documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
@@ -84,7 +84,7 @@ result = swarm(task)
 
 | | Sequential Chain (M2) | Dynamic Swarm (M5) |
 |---|---|---|
-| Path | Fixed in Python code | Emergent — agents decide |
+| Path | Fixed in Python code | Emergent: agents decide |
 | Control | Deterministic | Autonomous |
 | Change path | Rewrite code | Change `description` |
 | Best for | Known, stable workflows | Exploration, multi-domain tasks |
@@ -98,7 +98,7 @@ python chat.py
 
 ## Prerequisites
 
-Module 1 — imports tools from `../01-strands-foundations/decision_brief_tools.py`.
+Module 1: imports tools from `../01-strands-foundations/decision_brief_tools.py`.
 
 ## Next
 

@@ -1,6 +1,6 @@
-# Module 7: Capstone — Decision-Memo System
+# Module 7: Capstone: Decision-Memo System
 
-Combine all four multi-agent patterns into one complete Decision Intelligence pipeline — from a decision brief to an approved leadership memo.
+Combine all four multi-agent patterns into one complete Decision Intelligence pipeline: from a decision brief to an approved leadership memo.
 
 ## Architecture
 

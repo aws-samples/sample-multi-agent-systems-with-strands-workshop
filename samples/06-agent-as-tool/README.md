@@ -1,6 +1,6 @@
 # Module 6: Agent-as-Tool
 
-**Pattern 5.** Wrap specialized agents as callable tools so an LLM orchestrator can delegate like a manager to experts — routing decided by the model, not by Python code.
+**Pattern 5.** Wrap specialized agents as callable tools so an LLM orchestrator can delegate like a manager to experts: routing decided by the model, not by Python code.
 
 ## Architecture
 
@@ -21,26 +21,26 @@ An LLM orchestrator that uses three specialist agents as tools. The model decide
 
 ## Key concepts
 
-- `@tool` wrapping `Agent` — full control over parameters; docstring is the routing logic
-- `callback_handler=None` — silent sub-agents; only orchestrator + final synthesizer stream
-- LLM routing — the orchestrator decides tool call order and arguments
-- Multi-parameter `@tool` — lets the orchestrator pass precise context per call
+- `@tool` wrapping `Agent`: full control over parameters; docstring is the routing logic
+- `callback_handler=None`: silent sub-agents; only orchestrator + final synthesizer stream
+- LLM routing: the orchestrator decides tool call order and arguments
+- Multi-parameter `@tool`: lets the orchestrator pass precise context per call
 
 ## Three ways to use Agents as Tools
 
 ```python
-# Option A — @tool decorator (most control, multi-parameter) — used in this module
+# Option A: @tool decorator (most control, multi-parameter): used in this module
 @tool
 def researcher_agent(topic: str) -> str:
     """Research market context..."""
     worker = Agent(tools=[...], system_prompt=..., callback_handler=None)
     return str(worker(topic))
 
-# Option B — pass Agent directly in tools[] (simplest, single string input)
+# Option B: pass Agent directly in tools[] (simplest, single string input)
 researcher = Agent(system_prompt=..., tools=[...])
 orchestrator = Agent(tools=[researcher, analyst, writer])
 
-# Option C — .as_tool() (custom name/description, optional preserve_context)
+# Option C: .as_tool() (custom name/description, optional preserve_context)
 orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 ```
 
@@ -51,13 +51,13 @@ The Strands Agents SDK supports three ways to use agents as tools:
 passing agents directly in `tools[]`, using `.as_tool()`, or wrapping with the `@tool` decorator.
 
 ```python
-# Option 1 — pass Agent directly (SDK auto-converts; single string input)
+# Option 1: pass Agent directly (SDK auto-converts; single string input)
 orchestrator = Agent(tools=[researcher, analyst, writer])
 
-# Option 2 — .as_tool() for custom name/description
+# Option 2: .as_tool() for custom name/description
 orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 
-# Option 3 — @tool decorator (full parameter control — used in this module)
+# Option 3: @tool decorator (full parameter control: used in this module)
 @tool
 def researcher_agent(topic: str) -> str:
     \"\"\"Research market context...\"\"\"\"
@@ -80,8 +80,8 @@ python chat.py
 
 ## Prerequisites
 
-Module 1 — imports tools from `../01-strands-foundations/decision_brief_tools.py`.
+Module 1: imports tools from `../01-strands-foundations/decision_brief_tools.py`.
 
 ## Next
 
-→ [Module 7: Capstone — Decision-Memo System](../07-capstone/)
+→ [Module 7: Capstone: Decision-Memo System](../07-capstone/)

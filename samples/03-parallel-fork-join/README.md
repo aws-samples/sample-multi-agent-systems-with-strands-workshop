@@ -1,6 +1,6 @@
 # Module 3: Parallel Fork-Join
 
-**Pattern 2.** Fork independent sub-tasks to run simultaneously, then merge results — latency drops to the slowest single worker.
+**Pattern 2.** Fork independent sub-tasks to run simultaneously, then merge results: latency drops to the slowest single worker.
 
 ## Architecture
 
@@ -21,14 +21,14 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `asynci
 
 ## Key concepts
 
-- `agent.invoke_async(prompt)` — runs an agent as a coroutine (non-blocking)
-- `asyncio.gather(...)` — fork: starts N coroutines simultaneously; join: waits for all
-- `nest_asyncio.apply()` — required for `asyncio.gather` inside Jupyter notebooks
+- `agent.invoke_async(prompt)`: runs an agent as a coroutine (non-blocking)
+- `asyncio.gather(...)`: fork: starts N coroutines simultaneously; join: waits for all
+- `nest_asyncio.apply()`: required for `asyncio.gather` inside Jupyter notebooks
 - Wall-clock time ≈ slowest single analyzer (not sum of all three)
 
 ## Strands Agents SDK
 
-Parallel fork-join uses `Agent.invoke_async()` — the async version of `agent()` that returns a coroutine.
+Parallel fork-join uses `Agent.invoke_async()`: the async version of `agent()` that returns a coroutine.
 `asyncio.gather()` runs multiple coroutines simultaneously and returns when all complete.
 See the [Strands Agents SDK documentation](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
@@ -43,11 +43,11 @@ result_a, result_b, result_c = await asyncio.gather(
 )
 ```
 
-> `Agent.invoke_async()` is documented in the Strands SDK — it is the async equivalent of calling `agent(prompt)` directly.
+> `Agent.invoke_async()` is documented in the Strands SDK: it is the async equivalent of calling `agent(prompt)` directly.
 
 **Pricing:**
-- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — all 3 parallel agents call Bedrock concurrently
-- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) — Runtime invocation costs
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el): all 3 parallel agents call Bedrock concurrently
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el): Runtime invocation costs
 
 ## Run
 
@@ -58,7 +58,7 @@ python chat.py
 
 ## Prerequisites
 
-Module 1 — imports tools from `../01-strands-foundations/decision_brief_tools.py`.
+Module 1: imports tools from `../01-strands-foundations/decision_brief_tools.py`.
 
 ## Next
 

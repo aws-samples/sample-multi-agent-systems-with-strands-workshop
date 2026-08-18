@@ -1,6 +1,6 @@
-# M5: Dynamic Swarm — Production Runtime
+# M5: Dynamic Swarm: Production Runtime
 
-![Dynamic Swarm Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs the Swarm with autonomous agent handoffs](./architecture.png)
+![Dynamic Swarm Runtime on Amazon Bedrock AgentCore: Client invokes the Runtime which runs the Swarm with autonomous agent handoffs](./architecture.png)
 
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
@@ -8,7 +8,7 @@ Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 | File | Purpose |
 |------|---------|
-| `main.py` | AgentCore entry point — `@app.entrypoint` wrapping the pattern |
+| `main.py` | AgentCore entry point: `@app.entrypoint` wrapping the pattern |
 | `mock_tools.py` | Self-contained business intelligence tools (no external deps) |
 | `requirements.txt` | Runtime dependencies including OTEL instrumentation |
 
@@ -32,7 +32,7 @@ uv init --bare --python 3.13
 uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3
 cd ../..
 
-# 5. Deploy (uses CDK — builds container, provisions Runtime)
+# 5. Deploy (uses CDK: builds container, provisions Runtime)
 agentcore deploy
 ```
 
@@ -49,7 +49,7 @@ agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium
 ```
 
 ```python
-# boto3 — production invocation pattern
+# boto3: production invocation pattern
 import json, uuid, boto3
 
 client = boto3.client("bedrock-agentcore", region_name="us-east-1")
@@ -89,10 +89,10 @@ it installs OTEL automatically. No extra config needed.
 
 Navigate to **CloudWatch → X-Ray → Traces** or **GenAI Observability**:
 
-- **Per-invocation trace** — one root span per `invoke_agent_runtime` call
-- **Per-agent spans** — each `Agent()` call creates a child span tagged with `session.id`
-- **Tool call spans** — each tool call (researcher, analyzer, etc.) is a nested span
-- **Duration breakdown** — see exactly where time is spent across the pipeline
+- **Per-invocation trace**: one root span per `invoke_agent_runtime` call
+- **Per-agent spans**: each `Agent()` call creates a child span tagged with `session.id`
+- **Tool call spans**: each tool call (researcher, analyzer, etc.) is a nested span
+- **Duration breakdown**: see exactly where time is spent across the pipeline
 
 Session ID is propagated via OTEL baggage so all spans from the same invocation
 are grouped together, even across nested agent calls.
@@ -113,13 +113,13 @@ aws logs start-query \
 
 ## Cleanup
 
-**Two steps — both required:**
+**Two steps: both required:**
 
 ```bash
 # Step 1: Reset local config (does NOT touch AWS)
 agentcore remove all -y
 
-# Step 2: Apply teardown — removes the Runtime, CDK stack, and ECR image from AWS
+# Step 2: Apply teardown: removes the Runtime, CDK stack, and ECR image from AWS
 agentcore deploy
 ```
 
