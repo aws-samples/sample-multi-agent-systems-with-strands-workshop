@@ -1,5 +1,7 @@
 # M3: Parallel Fork-Join — Production Runtime
 
+![Parallel Fork-Join Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs Researcher then forks A/B/C analyzers in parallel via asyncio.gather](./architecture.png)
+
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files

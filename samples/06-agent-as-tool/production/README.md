@@ -1,5 +1,7 @@
 # M6: Agent-as-Tool — Production Runtime
 
+![Agent-as-Tool Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs the LLM orchestrator delegating to @tool specialist agents](./architecture.png)
+
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files

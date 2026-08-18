@@ -15,6 +15,10 @@ A single agent with three mock business intelligence tools that can look up comp
 | `decision_brief_tools.py` | Three mock `@tool` functions + NovaCart mock data |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 
+## How the Agentic Loop Works
+
+![Strands agentic loop: Input & Context → Reasoning LLM → Tool Selection → Tool Execution → cycle back → Response](./agent-loop.png)
+
 ## Key concepts
 
 - `@tool` decorator — Python function the LLM can call; docstring is the routing logic

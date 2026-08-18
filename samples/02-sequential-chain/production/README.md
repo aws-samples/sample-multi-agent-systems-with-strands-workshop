@@ -1,5 +1,7 @@
 # M2: Sequential Chain — Production Runtime
 
+![Sequential Chain Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs Research → Analyst → Synthesizer and calls Amazon Bedrock for inference](./architecture.png)
+
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files

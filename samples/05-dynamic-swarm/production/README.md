@@ -1,5 +1,7 @@
 # M5: Dynamic Swarm — Production Runtime
 
+![Dynamic Swarm Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs the Swarm with autonomous agent handoffs](./architecture.png)
+
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files

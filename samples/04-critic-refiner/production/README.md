@@ -1,5 +1,7 @@
 # M4: Critic-Refiner — Production Runtime
 
+![Critic-Refiner Runtime on Amazon Bedrock AgentCore — Client invokes the Runtime which runs the GraphBuilder Writer+Critic quality loop until APPROVED](./architecture.png)
+
 Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files
