@@ -26,6 +26,7 @@ import logging
 import os
 import sys
 import threading
+import uuid
 from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -158,7 +159,6 @@ def researcher_agent(topic: str) -> str:
     Args:
         topic: The decision topic to research.
     """
-    sid, _ = _current_session()
     return _call_a2a(_get_researcher(), topic)
 
 
@@ -170,7 +170,6 @@ def analyst_agent(brief: str, research_context: str) -> str:
         brief: The original decision brief.
         research_context: Findings from researcher_agent.
     """
-    sid, _ = _current_session()
     return _call_a2a(_get_analyst(), f"Brief:\n{brief}\n\nResearch findings:\n{research_context}")
 
 
@@ -183,7 +182,6 @@ def synthesizer_agent(brief: str, research_context: str, analysis: str) -> str:
         research_context: Findings from researcher_agent.
         analysis: Analysis from analyst_agent.
     """
-    sid, _ = _current_session()
     return _call_a2a(_get_synthesizer(), f"Brief:\n{brief}\n\nResearch:\n{research_context}\n\nAnalysis:\n{analysis}")
 
 
@@ -205,7 +203,7 @@ def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
-    session_id = (context.session_id if context and context.session_id else None) or "default-session"
+    session_id = (context.session_id if context and context.session_id else None) or str(uuid.uuid4())
     return str(_get_session_agent(session_id)(brief)).strip()
 
 

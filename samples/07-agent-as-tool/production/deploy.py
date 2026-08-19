@@ -113,7 +113,8 @@ def main():
     print("\n=== Step 2: Deploy HTTP orchestrator ===")
     orch_role = u.ensure_runtime_role(
         iam, f"agentcore-{prefix}-orchestrator-role", account, REGION, bucket,
-        can_invoke_runtimes=True,   # calls A2A endpoints (requires InvokeAgentRuntime)
+        can_invoke_runtimes=True,
+        specialist_arns=[arns[researcher_name], arns[analyst_name], arns[synthesizer_name]],
     )
     orch_key = u.upload_code(s3c, bucket, MODULE, orch_name, u.zip_folder(HERE / "orchestrator"))
     print(f"  [{orch_name}] uploaded → s3://{bucket}/{orch_key}")

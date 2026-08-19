@@ -115,11 +115,13 @@ def ensure_runtime_role(
     region: str,
     bucket: str,
     can_invoke_runtimes: bool = False,
+    specialist_arns: list = None,
 ) -> str:
     """Get or create an IAM execution role for an AgentCore runtime.
 
-    can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime —
-    required for orchestrator runtimes that call specialist runtimes.
+    can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime.
+    specialist_arns limits the grant to those specific ARNs; omit only when
+    the set of runtimes is not known at deploy time (falls back to account-wide).
     """
     trust = json.dumps({
         "Version": "2012-10-17",
@@ -165,10 +167,11 @@ def ensure_runtime_role(
         },
     ]
     if can_invoke_runtimes:
+        resource = specialist_arns if specialist_arns else f"arn:aws:bedrock-agentcore:{region}:{account}:runtime/*"
         statements.append({
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
-            "Resource": f"arn:aws:bedrock-agentcore:{region}:{account}:runtime/*",
+            "Resource": resource,
         })
 
     iam_client.put_role_policy(
