@@ -33,6 +33,27 @@ RESEARCH_TOOLS = [get_company_data, get_market_benchmarks, get_competitor_data]
 
 
 
+researcher = Agent(
+    name="researcher",
+    description="Market research specialist with tools for company data, benchmarks, and competitor intelligence. Use me first.",
+    system_prompt="Use your tools to gather market data. Hand off to analyst when done.",
+    tools=RESEARCH_TOOLS,
+    callback_handler=None,
+)
+analyst = Agent(
+    name="analyst",
+    description="Business analyst who evaluates options A/B/C with structured analysis.",
+    system_prompt="Evaluate options A/B/C: strengths, weaknesses, complexity, risks+mitigations, verdict. Hand off to writer.",
+    callback_handler=None,
+)
+writer = Agent(
+    name="writer",
+    description="Executive memo writer. Produces the final leadership decision memo.",
+    system_prompt="Write the final memo: Recommendation, Options table, Risks, Metrics, Decision Required. Do NOT hand off.",
+    callback_handler=None,
+)
+
+
 @app.entrypoint
 def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
@@ -46,26 +67,6 @@ def invoke(payload, context):
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
     logger.info("session.id=%s module=m5-dynamic-swarm", _session_id)
-
-    researcher = Agent(
-        name="researcher",
-        description="Market research specialist with tools for company data, benchmarks, and competitor intelligence. Use me first.",
-        system_prompt="Use your tools to gather market data. Hand off to analyst when done.",
-        tools=RESEARCH_TOOLS,
-        callback_handler=None,
-    )
-    analyst = Agent(
-        name="analyst",
-        description="Business analyst who evaluates options A/B/C with structured analysis.",
-        system_prompt="Evaluate options A/B/C: strengths, weaknesses, complexity, risks+mitigations, verdict. Hand off to writer.",
-        callback_handler=None,
-    )
-    writer = Agent(
-        name="writer",
-        description="Executive memo writer. Produces the final leadership decision memo.",
-        system_prompt="Write the final memo: Recommendation, Options table, Risks, Metrics, Decision Required. Do NOT hand off.",
-        callback_handler=None,
-    )
 
     swarm = Swarm([researcher, analyst, writer], entry_point=researcher,
                   max_handoffs=6, max_iterations=10, execution_timeout=180.0)

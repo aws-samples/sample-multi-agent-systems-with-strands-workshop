@@ -1,138 +1,150 @@
-# M7: Decision-Memo Capstone: Production Runtime
+# Module 8 Capstone — Production Deployment
 
-Deploy this module as an Amazon Bedrock AgentCore Runtime.
+Multi-runtime deployment of the Capstone pattern on Amazon Bedrock AgentCore Runtime.
+Combines **Agent-as-Tool** (Module 7) orchestration with **AgentCore Memory** for
+persistent, multi-turn conversations.
+
+---
+
+## Architecture
+
+```
+User
+ │  actorId → custom header  X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id
+ │  sessionId → runtimeSessionId parameter (becomes context.session_id in container)
+ ▼
+Orchestrator Runtime  ──── AgentCore Memory (STM + LTM)
+   │  passes same actorId header + runtimeSessionId to each specialist
+   ├──► Researcher Runtime        (stateless — SlidingWindowConversationManager)
+   ├──► Analyzer Runtime ×3       (concurrent — stateless)
+   └──► Critic-Refiner Runtime    (GraphBuilder Writer→Critic loop — stateless)
+```
+
+### Session identifiers
+
+| Identifier | What it is | Pattern | Where it lives |
+|-----------|-----------|---------|---------------|
+| **actorId** | Permanent user identity. Scopes long-term memory records per user. Stays the same across all sessions for a given user. | `[a-zA-Z0-9][a-zA-Z0-9-_/]*` 1–255 chars | Custom HTTP header `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id`, injected by the caller via the boto3 event system before request signing. |
+| **sessionId** | Unique conversation ID. Groups short-term memory events for one conversation. Also controls container affinity (same ID → same container instance). | `[a-zA-Z0-9][a-zA-Z0-9-_]*` 33–256 chars (runtimeSessionId) | `runtimeSessionId` parameter in `invoke_agent_runtime`. Arrives at the container as `context.session_id` via the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header, injected automatically by the AgentCore service. |
+
+### How identifiers propagate between runtimes
+
+1. The caller (`chat.py`) creates a boto3 client with a `before-sign` event hook that injects the `actorId` header.
+2. The caller passes `sessionId` as `runtimeSessionId`.
+3. AgentCore routes the request to the Orchestrator container and injects both as HTTP headers.
+4. The Orchestrator reads `context.session_id` and `context.request_headers.get(ACTOR_HEADER)`.
+5. When the Orchestrator calls a specialist, it passes the **same `runtimeSessionId`** AND the **same actor header** using its own boto3 event hook.
+6. Specialist containers receive the same identifiers → same container session affinity → same Memory namespace.
+
+### Memory strategy
+
+| Layer | What it stores | Scope |
+|-------|---------------|-------|
+| **Short-term (STM)** | Raw conversation events (user ↔ agent turns). Kept for `eventExpiryDuration` days (30 by default). | Per `actorId` + `sessionId` |
+| **Long-term (LTM)** | Facts extracted by the SEMANTIC strategy from STM events. Persists across sessions. | Per `actorId` under `/facts/{actorId}` |
+
+The Orchestrator retrieves LTM facts at the start of each user turn via `retrieval_config`, injecting them as context before calling Bedrock.
+
+---
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `main.py` | AgentCore entry point: `@app.entrypoint` wrapping the pattern |
-| `mock_tools.py` | Self-contained business intelligence tools (no external deps) |
-| `requirements.txt` | Runtime dependencies including OTEL instrumentation |
+| `deploy.py` | Creates AgentCore Memory + deploys 4 runtimes in one command |
+| `cleanup.py` | Deletes all resources (runtimes, IAM roles, Memory, S3 code) |
+| `chat.py` | Interactive multi-turn CLI — pass `--actor-id` and optionally `--session-id` |
+| `invoke.py` | Single-invocation script (no actorId, no Memory) — for quick tests |
+| `orchestrator/main.py` | Orchestrator Runtime with AgentCore Memory |
+| `specialists/researcher/main.py` | Researcher specialist (lazy singleton) |
+| `specialists/analyzer/main.py` | Analyzer specialist (lazy singleton) |
+| `specialists/critic_refiner/main.py` | Critic-Refiner specialist (GraphBuilder loop) |
+
+---
 
 ## Deploy
 
 ```bash
-# 1. Create the project
-agentcore create          # name: 07-runtime (or any name)
-cd <project-name>
+cd samples/08-capstone/production
 
-# 2. Add the agent
-agentcore add
-# Choose: agent → Bring my own code → entrypoint: main.py → Direct Code Deploy
+# Install dependencies
+pip install -r requirements.txt   # or: uv pip install -r requirements.txt
 
-# 3. Copy the runtime files into the agent folder
-cp ../main.py ../mock_tools.py ../requirements.txt app/<AgentName>/
+# Deploy everything (Memory + 4 runtimes)
+python deploy.py
 
-# 4. Set up dependencies (pyproject.toml required by agentcore deploy)
-cd app/<AgentName>
-uv init --bare --python 3.13
-uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3 nest-asyncio
-cd ../..
+# Deploy without Memory (uses in-container SlidingWindowConversationManager)
+python deploy.py --skip-memory
 
-# 5. Deploy (builds container, provisions Runtime)
-agentcore deploy
+# Custom name prefix (max 8 chars)
+python deploy.py --name-prefix m8ws
 ```
 
-First deploy takes 3–5 minutes. Later updates reuse cached layers and are faster.
+Deploy takes ~3–5 minutes. Output includes the Orchestrator ARN and Memory ID.
 
-## Test
+---
+
+## Chat (multi-turn)
 
 ```bash
-# CLI
-agentcore invoke "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
+# Start a new conversation
+python chat.py \
+  --actor-id user-123 \
+  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m8_orchestrator-XXXXX
 
-# With session ID (for multi-turn context, must be 33+ chars):
-agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
+# Resume a previous conversation (same actorId — LTM still applies across sessions)
+python chat.py \
+  --actor-id user-123 \
+  --runtime-arn arn:aws:bedrock-agentcore:... \
+  --session-id 550e8400-e29b-41d4-a716-446655440000
+
+# Non-interactive single prompt
+python chat.py \
+  --actor-id user-123 \
+  --runtime-arn arn:aws:bedrock-agentcore:... \
+  --prompt "Analyze NovaCart pricing options A, B, C"
 ```
 
-```python
-# boto3: production invocation pattern
-import json, uuid, boto3
+### Session ID notes
 
-from botocore.config import Config
-client = boto3.client("bedrock-agentcore", region_name="us-east-1",
-    config=Config(read_timeout=300))  # pipelines can take 60-180s
-response = client.invoke_agent_runtime(
-    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT>:runtime/<ARN-suffix>",
-    runtimeSessionId=str(uuid.uuid4()),   # 33+ chars; uuid4 satisfies this
-    payload=json.dumps({
-        "prompt": "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV.",
-        "session_id": str(uuid.uuid4()),  # used by OTEL to group spans
-    }).encode(),
-    qualifier="DEFAULT",
-)
-result = json.loads(response["response"].read())
-print(result)
-```
+- A UUID (36 chars) is generated automatically for each new conversation.
+- Save the printed Session ID to resume the conversation and access its STM history.
+- Starting a new session with the same `actorId` will retrieve LTM facts from previous sessions.
 
-## Observability
-
-### Enable CloudWatch Transaction Search (one-time per account)
-
-```python
-import boto3
-logs = boto3.client("logs", region_name="us-east-1")
-xray = boto3.client("xray", region_name="us-east-1")
-
-# Enable OTEL trace indexing
-xray.update_trace_segment_destination(destination="CloudWatchLogs")
-logs.create_log_group(logGroupName="aws/spans")
-```
-
-### Add OTEL to uv dependencies (already in requirements.txt)
-
-`aws-opentelemetry-distro` is included. When `agentcore deploy` builds the container,
-it installs OTEL automatically. No extra config needed.
-
-### What you'll see in CloudWatch
-
-Navigate to **CloudWatch → X-Ray → Traces** or **GenAI Observability**:
-
-- **Per-invocation trace**: one root span per `invoke_agent_runtime` call
-- **Per-agent spans**: each `Agent()` call creates a child span tagged with `session.id`
-- **Tool call spans**: each tool call (researcher, analyzer, etc.) is a nested span
-- **Duration breakdown**: see exactly where time is spent across the pipeline
-
-Session ID is propagated via OTEL baggage so all spans from the same invocation
-are grouped together, even across nested agent calls.
-
-### Check traces
-
-```bash
-# View recent invocations
-agentcore status
-
-# CloudWatch Logs Insights query for your Runtime
-aws logs start-query \
-  --log-group-name /aws/bedrock-agentcore/<runtime-name> \
-  --start-time $(date -d '1 hour ago' +%s) \
-  --end-time $(date +%s) \
-  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
-```
+---
 
 ## Cleanup
 
-**Two steps: both required:**
-
 ```bash
-# Step 1: Reset local config (does NOT touch AWS)
-agentcore remove all -y
+# Delete everything (runtimes + IAM roles + Memory + S3 objects)
+python cleanup.py --name-prefix m8
 
-# Step 2: Apply teardown — removes the Runtime and ECR image from AWS
-agentcore deploy
+# Keep the Memory (useful if you want to preserve LTM across redeploys)
+python cleanup.py --name-prefix m8 --skip-memory
+
+# Preview what would be deleted
+python cleanup.py --name-prefix m8 --dry-run
 ```
 
-> `agentcore remove all -y` only resets the local `agentcore/agentcore.json`.
-> The follow-up `agentcore deploy` is what actually deletes the CloudFormation stack
-> and the AgentCore Runtime endpoint from your account.
+---
 
-To verify cleanup is complete:
+## IAM permissions
 
-```bash
-# Check no Runtimes remain
-aws bedrock-agentcore list-agent-runtimes --region us-east-1
+### Specialist runtimes
+- `bedrock:InvokeModel` / `bedrock:InvokeModelWithResponseStream`
+- `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
+- `s3:GetObject`, `s3:ListBucket` (code bundle)
 
-# Verify Runtime is gone
-aws bedrock-agentcore list-agent-runtimes --region us-east-1
-```
+### Orchestrator runtime (additional)
+- `bedrock-agentcore:InvokeAgentRuntime` — to call specialist runtimes
+- `bedrock-agentcore:CreateEvent`, `GetEvent`, `ListEvents`, `DeleteEvent` — STM operations
+- `bedrock-agentcore:RetrieveMemoryRecords`, `ListMemoryRecords`, `GetMemoryRecord` — LTM retrieval
+
+---
+
+## References
+
+- [AgentCore Runtime documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
+- [AgentCore Memory documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)
+- [Strands Agents SDK](https://strandsagents.com)
+- [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)

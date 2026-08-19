@@ -22,22 +22,37 @@ CRITIC_PROMPT = (
 )
 
 
+_writer = None
+_critic = None
+
+
+def get_writer():
+    global _writer
+    if _writer is None:
+        _writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
+    return _writer
+
+
+def get_critic():
+    global _critic
+    if _critic is None:
+        _critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
+    return _critic
+
+
 @app.entrypoint
 def invoke(payload, context):
     prompt = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not prompt:
         raise ValueError("Missing required field: prompt")
 
-    writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
-    critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
-
     def needs_revision(state):
         r = state.results.get("critic")
         return bool(r) and "revision needed" in str(r.result).lower()
 
     builder = GraphBuilder()
-    builder.add_node(writer, "writer")
-    builder.add_node(critic, "critic")
+    builder.add_node(get_writer(), "writer")
+    builder.add_node(get_critic(), "critic")
     builder.set_entry_point("writer")
     builder.add_edge("writer", "critic")
     builder.add_edge("critic", "writer", condition=needs_revision)

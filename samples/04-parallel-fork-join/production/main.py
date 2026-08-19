@@ -27,6 +27,12 @@ SYNTHESIZER_PROMPT = "Write memo: Recommendation, Options table A/B/C, Top 3 Ris
 import uuid as _uuid
 from opentelemetry import baggage as _baggage, context as _ctx
 
+researcher  = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT,  callback_handler=None)
+analyzer_a  = Agent(system_prompt=ANALYZER_A_PROMPT, callback_handler=None)
+analyzer_b  = Agent(system_prompt=ANALYZER_B_PROMPT, callback_handler=None)
+analyzer_c  = Agent(system_prompt=ANALYZER_C_PROMPT, callback_handler=None)
+synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
+
 
 @app.entrypoint
 def invoke(payload, context):
@@ -38,12 +44,6 @@ def invoke(payload, context):
     _session_id = (payload.get("session_id") if isinstance(payload, dict) else None) or str(_uuid.uuid4())
     _token = _ctx.attach(_baggage.set_baggage("session.id", _session_id))
     logger.info("session.id=%s module=m3-parallel-fork-join", _session_id)
-
-    researcher  = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT,  callback_handler=None)
-    analyzer_a  = Agent(system_prompt=ANALYZER_A_PROMPT, callback_handler=None)
-    analyzer_b  = Agent(system_prompt=ANALYZER_B_PROMPT, callback_handler=None)
-    analyzer_c  = Agent(system_prompt=ANALYZER_C_PROMPT, callback_handler=None)
-    synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
 
     builder = GraphBuilder()
     builder.add_node(researcher,  "researcher")

@@ -44,6 +44,11 @@ CRITIC_PROMPT = (
 )
 
 
+researcher = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT, callback_handler=None)
+writer     = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
+critic     = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
+
+
 @app.entrypoint
 def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
@@ -58,11 +63,7 @@ def invoke(payload, context):
     _ctx.attach(_otel_ctx)
     logger.info("session.id=%s module=m4-critic-refiner", _session_id)
 
-    researcher = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT, callback_handler=None)
     research_text = str(researcher(f"Gather data for: {brief}"))
-
-    writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
-    critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
 
     def needs_revision(state):
         r = state.results.get("critic")

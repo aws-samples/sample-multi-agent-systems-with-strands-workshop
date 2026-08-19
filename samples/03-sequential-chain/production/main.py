@@ -33,6 +33,10 @@ RESEARCHER_PROMPT  = "You are a market research specialist. Use tools to gather 
 ANALYST_PROMPT     = "You are a business analyst. Evaluate each option (A/B/C): strengths, weaknesses, complexity, top 2 risks+mitigations, verdict."
 SYNTHESIZER_PROMPT = "Write a leadership memo: Recommendation, Options table A/B/C, Top 3 Risks, Success Metrics, Decision Required. Under 400 words."
 
+researcher  = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT,  callback_handler=None)
+analyst     = Agent(system_prompt=ANALYST_PROMPT,    callback_handler=None)
+synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
+
 
 @app.entrypoint
 def invoke(payload, context):
@@ -47,10 +51,6 @@ def invoke(payload, context):
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
     logger.info("session.id=%s module=m2-sequential-chain", _session_id)
-
-    researcher  = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT,  callback_handler=None)
-    analyst     = Agent(system_prompt=ANALYST_PROMPT,    callback_handler=None)
-    synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
 
     research = researcher(f"Gather data for: {brief}")
     analysis = analyst(f"Brief:\n{brief}\n\nResearch:\n{research}")
