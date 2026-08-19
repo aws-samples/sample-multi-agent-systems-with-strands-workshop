@@ -1,3 +1,5 @@
+> **These are educational samples.** The code in this repository is designed for learning and experimentation. It is not intended for production use without additional hardening, security review, and adaptation to your specific requirements.
+
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
 Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el). Progress from a single-agent ceiling through five production patterns - Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool - finishing with a deployed Decision-Memo system on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
