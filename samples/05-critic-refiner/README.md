@@ -15,7 +15,7 @@ A `GraphBuilder` feedback loop: Writer → Critic → [APPROVED: done | REVISION
 
 | File | Purpose |
 |------|---------|
-| `module-04.ipynb` | Step-by-step notebook: research → Writer → Critic → graph loop → metrics |
+| `module-05.ipynb` | Step-by-step notebook: research → Writer → Critic → graph loop → metrics |
 | `chat.py` | Run the critic-refiner pipeline interactively |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 

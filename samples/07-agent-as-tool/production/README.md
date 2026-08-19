@@ -1,180 +1,140 @@
-# Pattern 5: Agent-as-Tool - Production Deployment
+# M7: Agent-as-Tool: Production Runtime
 
-Deploy the Agent-as-Tool pattern to Amazon Bedrock AgentCore: 4 Runtimes coordinated by an Orchestrator.
+![Agent-as-Tool Runtime on Amazon Bedrock AgentCore: Client invokes the Runtime which runs the LLM orchestrator delegating to @tool specialist agents](./architecture.png)
 
-![Agent-as-Tool architecture](./architecture.png)
-
-**Pattern:** Orchestrator delegates to Researcher, Analyst, and Synthesizer specialist runtimes wrapped as `@tool` functions. The LLM decides routing and argument construction. No fixed pipeline.
-
----
-
-## Why deploy.py is required (not the CLI)
-
-The `agentcore configure` CLI configures a **single runtime** per project. This module deploys **4 runtimes** where the Orchestrator must know the ARNs of the three specialists at startup (passed as environment variables). The CLI cannot:
-
-- Deploy multiple runtimes in one command
-- Automatically pass specialist ARNs to the Orchestrator as env vars
-- Coordinate the deployment order (specialists first, then Orchestrator)
-
-`deploy.py` handles all of this with one command.
-
----
-
-## Contents
-
-- [Files](#files)
-- [Architecture](#architecture)
-- [Deploy](#deploy)
-- [Invoke](#invoke)
-- [Multi-turn chat](#multi-turn-chat)
-- [Session continuity](#session-continuity)
-- [Cleanup](#cleanup)
-- [Observability](#observability)
-
----
+Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `deploy.py` | **boto3 deploy script** - deploys 3 specialists in parallel, then Orchestrator with specialist ARNs |
-| `cleanup.py` | **boto3 cleanup script** - deletes all 4 runtimes, IAM roles, and S3 objects |
-| `invoke.py` | Single-invocation script - pass Orchestrator Runtime ARN as argument |
-| `chat.py` | **Interactive multi-turn chat** - maintains session across turns |
-| `main.py` | Unused at production (root-level single-runtime variant - see `orchestrator/`) |
-| `mock_tools.py` | Self-contained business intelligence tools |
-| `orchestrator/main.py` | Orchestrator Runtime code - lazy singleton + SlidingWindowConversationManager |
-| `specialists/researcher/main.py` | Researcher specialist - lazy singleton |
-| `specialists/analyst/main.py` | Analyst specialist - lazy singleton |
-| `specialists/synthesizer/main.py` | Synthesizer specialist - lazy singleton |
-
----
-
-## Architecture
-
-```
-User
- |
- v  runtimeSessionId (routes to same container for session affinity)
-Orchestrator Runtime  [SlidingWindowConversationManager, window=20]
-  |                     (in-container history - persists while container is warm)
-  +-- researcher_agent(@tool) --> Researcher Runtime
-  +-- analyzer_agent(@tool)   --> Analyst Runtime
-  +-- synthesizer_agent(@tool)--> Synthesizer Runtime
-```
-
-The Orchestrator passes the same `runtimeSessionId` to each specialist call so all requests within a session route to the same specialist container instance.
-
----
+| `main.py` | AgentCore entry point: `@app.entrypoint` wrapping the pattern |
+| `mock_tools.py` | Self-contained business intelligence tools (no external deps) |
+| `requirements.txt` | Runtime dependencies including OTEL instrumentation |
 
 ## Deploy
 
 ```bash
-cd samples/07-agent-as-tool/production
+# 1. Create the project
+agentcore create          # name: 06-runtime (or any name)
+cd <project-name>
 
-python deploy.py                    # default prefix m7
-python deploy.py --name-prefix m7ws # custom prefix (max 8 chars)
-python deploy.py --dry-run          # preview without creating
+# 2. Add the agent
+agentcore add
+# Choose: agent → Bring my own code → entrypoint: main.py → Direct Code Deploy
+
+# 3. Copy the runtime files into the agent folder
+cp ../main.py ../mock_tools.py ../requirements.txt app/<AgentName>/
+
+# 4. Set up dependencies (pyproject.toml required by agentcore deploy)
+cd app/<AgentName>
+uv init --bare --python 3.13
+uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3
+cd ../..
+
+# 5. Deploy (builds container, provisions Runtime)
+agentcore deploy
 ```
 
-What `deploy.py` does:
+First deploy takes 3–5 minutes. Later updates reuse cached layers and are faster.
 
-1. Creates/reuses the S3 code bucket
-2. Deploys the 3 specialist runtimes **in parallel** (concurrent ThreadPoolExecutor)
-3. Waits for all specialists to reach `READY` status
-4. Deploys the Orchestrator with the specialist ARNs injected as environment variables:
-   - `RESEARCHER_RUNTIME_ARN`
-   - `ANALYZER_RUNTIME_ARN`
-   - `SYNTHESIZER_RUNTIME_ARN`
-5. Prints the Orchestrator ARN
-
-**Output:**
-```
-=== Step 1: Deploy specialists in parallel ===
-  [m7_researcher] READY: arn:aws:bedrock-agentcore:...
-  [m7_analyst]    READY: arn:aws:bedrock-agentcore:...
-  [m7_synthesizer] READY: arn:aws:bedrock-agentcore:...
-
-=== Step 2: Deploy orchestrator ===
-  [m7_orchestrator] READY: arn:aws:bedrock-agentcore:...
-
-Orchestrator ARN (pass to chat.py or invoke.py):
-  arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
-```
-
----
-
-## Invoke
-
-Single invocation (no persistent session):
+## Test
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
+# CLI
+agentcore invoke "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
+
+# With session ID (for multi-turn context, must be 33+ chars):
+agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
 ```
 
----
+```python
+# boto3: production invocation pattern
+import json, uuid, boto3
 
-## Multi-turn chat
-
-`chat.py` maintains a session across turns using the same `runtimeSessionId`:
-
-```bash
-# New conversation
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
-
-# Resume existing conversation
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:... \
-  --session-id 550e8400-e29b-41d4-a716-446655440000
-
-# Single prompt (non-interactive)
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:... \
-  --prompt "Analyze NovaCart pricing options A, B, C"
+from botocore.config import Config
+client = boto3.client("bedrock-agentcore", region_name="us-east-1",
+    config=Config(read_timeout=300))  # pipelines can take 60-180s
+response = client.invoke_agent_runtime(
+    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT>:runtime/<ARN-suffix>",
+    runtimeSessionId=str(uuid.uuid4()),   # 33+ chars; uuid4 satisfies this
+    payload=json.dumps({
+        "prompt": "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV.",
+        "session_id": str(uuid.uuid4()),  # used by OTEL to group spans
+    }).encode(),
+    qualifier="DEFAULT",
+)
+result = json.loads(response["response"].read())
+print(result)
 ```
-
----
-
-## Session continuity
-
-This module uses **in-container memory** only (no AgentCore Memory resource):
-
-- The Orchestrator holds the full conversation history via `SlidingWindowConversationManager(window_size=20)`
-- History persists while the container is warm (idle timeout: 15 minutes by default)
-- If the container restarts, conversation history is lost - start a new session
-
-For persistent cross-session memory, see Module 8 (Capstone) which uses AgentCore Memory (STM + LTM).
-
----
-
-## Cleanup
-
-```bash
-python cleanup.py --name-prefix m7          # delete all 4 runtimes + IAM roles + S3
-python cleanup.py --name-prefix m7 --dry-run
-```
-
-The script deletes all 4 runtimes and their IAM roles in sequence, then S3 code objects.
-
----
 
 ## Observability
 
-AgentCore sends all telemetry to **Amazon CloudWatch**:
+### Enable CloudWatch Transaction Search (one-time per account)
 
-- **Logs:** one log group per runtime - `/aws/bedrock-agentcore/runtimes/<id>-DEFAULT`
-- **Traces:** CloudWatch Transaction Search (X-Ray settings > GenAI Observability)
+```python
+import boto3
+logs = boto3.client("logs", region_name="us-east-1")
+xray = boto3.client("xray", region_name="us-east-1")
 
-Each `invoke_agent_runtime` call produces a root trace. Nested specialist invocations appear as child spans, showing the tool call flow from Orchestrator to each specialist.
+# Enable OTEL trace indexing
+xray.update_trace_segment_destination(destination="CloudWatchLogs")
+logs.create_log_group(logGroupName="aws/spans")
+```
 
----
+### Add OTEL to uv dependencies (already in requirements.txt)
 
-## References
+`aws-opentelemetry-distro` is included. When `agentcore deploy` builds the container,
+it installs OTEL automatically. No extra config needed.
 
-- [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
-- [Strands Agents SDK](https://strandsagents.com)
-- [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)
+### What you'll see in CloudWatch
+
+Navigate to **CloudWatch → X-Ray → Traces** or **GenAI Observability**:
+
+- **Per-invocation trace**: one root span per `invoke_agent_runtime` call
+- **Per-agent spans**: each `Agent()` call creates a child span tagged with `session.id`
+- **Tool call spans**: each tool call (researcher, analyzer, etc.) is a nested span
+- **Duration breakdown**: see exactly where time is spent across the pipeline
+
+Session ID is propagated via OTEL baggage so all spans from the same invocation
+are grouped together, even across nested agent calls.
+
+### Check traces
+
+```bash
+# View recent invocations
+agentcore status
+
+# CloudWatch Logs Insights query for your Runtime
+aws logs start-query \
+  --log-group-name /aws/bedrock-agentcore/agenttool \
+  --start-time $(date -d '1 hour ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
+```
+
+## Cleanup
+
+**Two steps: both required:**
+
+```bash
+# Step 1: Reset local config (does NOT touch AWS)
+agentcore remove all -y
+
+# Step 2: Apply teardown — removes the Runtime and ECR image from AWS
+agentcore deploy
+```
+
+> `agentcore remove all -y` only resets the local `agentcore/agentcore.json`.
+> The follow-up `agentcore deploy` is what actually deletes the CloudFormation stack
+> and the AgentCore Runtime endpoint from your account.
+
+To verify cleanup is complete:
+
+```bash
+# Check no Runtimes remain
+aws bedrock-agentcore list-agent-runtimes --region us-east-1
+
+# Verify Runtime is gone
+aws bedrock-agentcore list-agent-runtimes --region us-east-1
+```

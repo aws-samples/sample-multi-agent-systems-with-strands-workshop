@@ -10,7 +10,7 @@ A single agent with three mock business intelligence tools that can look up comp
 
 | File | Purpose |
 |------|---------|
-| `module-01.ipynb` | Step-by-step notebook: tools → agent → loop inspection → ceiling demo |
+| `module-02.ipynb` | Step-by-step notebook: tools → agent → loop inspection → ceiling demo |
 | `chat.py` | Interactive multi-turn chat in the terminal |
 | `decision_brief_tools.py` | Three mock `@tool` functions + NovaCart mock data |
 | `requirements.txt` | `strands-agents>=1.52.0` |
@@ -38,7 +38,7 @@ uv pip install -r requirements.txt
 uv run python chat.py
 ```
 
-Or open `module-01.ipynb` in VS Code / JupyterLab and run cells top to bottom.
+Or open `module-02.ipynb` in VS Code / JupyterLab and run cells top to bottom.
 
 ## Model options
 

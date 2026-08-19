@@ -15,7 +15,7 @@ A 3-stage pipeline: Researcher → Analyst → Synthesizer. Each agent has a nar
 
 | File | Purpose |
 |------|---------|
-| `module-02.ipynb` | Step-by-step notebook: prompts → pipeline → inspect → metrics |
+| `module-03.ipynb` | Step-by-step notebook: prompts → pipeline → inspect → metrics |
 | `chat.py` | Run the pipeline interactively from the terminal |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 

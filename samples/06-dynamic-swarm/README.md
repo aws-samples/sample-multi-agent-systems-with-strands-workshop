@@ -36,7 +36,7 @@ A 3-agent Swarm (Researcher → Analyst → Writer) where routing is autonomous.
 
 | File | Purpose |
 |------|---------|
-| `module-05.ipynb` | Step-by-step notebook: create agents → build swarm → run → inspect path → metrics |
+| `module-06.ipynb` | Step-by-step notebook: create agents → build swarm → run → inspect path → metrics |
 | `chat.py` | Run the swarm interactively from the terminal |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 

@@ -20,7 +20,7 @@ Combine all four multi-agent patterns into one complete Decision Intelligence pi
 
 | File | Purpose |
 |------|---------|
-| `module-07.ipynb` | Full capstone notebook: prompts → tools → orchestrator → inspect → metrics |
+| `module-08.ipynb` | Full capstone notebook: prompts → tools → orchestrator → inspect → metrics |
 | `chat.py` | Run the complete pipeline interactively |
 | `requirements.txt` | `strands-agents>=1.52.0`, `nest-asyncio>=1.6.0` |
 

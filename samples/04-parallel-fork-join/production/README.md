@@ -1,116 +1,140 @@
-# Pattern 2: Parallel Fork-Join - Production Deployment
+# M4: Parallel Fork-Join: Production Runtime
 
-Deploy the Parallel Fork-Join pattern to Amazon Bedrock AgentCore Runtime.
+![Parallel Fork-Join Runtime on Amazon Bedrock AgentCore: Client invokes the Runtime which runs Researcher then forks A/B/C analyzers in parallel via asyncio.gather](./architecture.png)
 
-![Parallel Fork-Join architecture](./architecture.png)
-
-**Pattern:** Researcher -> [Analyzer A || B || C via GraphBuilder] -> Synthesizer. The three analyzers run in parallel inside one Runtime container using Strands `GraphBuilder`.
-
----
-
-## Contents
-
-- [Files](#files)
-- [Deploy](#deploy)
-- [Invoke](#invoke)
-- [Multi-turn chat](#multi-turn-chat)
-- [Cleanup](#cleanup)
-- [Observability](#observability)
-
----
+Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `main.py` | AgentCore entry point - `@app.entrypoint` wrapping the parallel GraphBuilder pipeline |
-| `mock_tools.py` | Self-contained business intelligence tools (no external dependencies) |
-| `requirements.txt` | Runtime dependencies: strands-agents, bedrock-agentcore, OTEL |
-| `deploy.py` | **boto3 deploy script** - creates IAM role, uploads code, provisions Runtime |
-| `cleanup.py` | **boto3 cleanup script** - deletes Runtime, role, and S3 objects |
-| `invoke.py` | Single-invocation script - pass Runtime ARN as argument |
-
----
+| `main.py` | AgentCore entry point: `@app.entrypoint` wrapping the pattern |
+| `mock_tools.py` | Self-contained business intelligence tools (no external deps) |
+| `requirements.txt` | Runtime dependencies including OTEL instrumentation |
 
 ## Deploy
 
 ```bash
-cd samples/04-parallel-fork-join/production
+# 1. Create the project
+agentcore create          # name: 03-runtime (or any name)
+cd <project-name>
 
-python deploy.py                    # default prefix m4
-python deploy.py --name-prefix m4ws # custom prefix (max 20 chars)
-python deploy.py --dry-run          # preview without creating
+# 2. Add the agent
+agentcore add
+# Choose: agent → Bring my own code → entrypoint: main.py → Direct Code Deploy
+
+# 3. Copy the runtime files into the agent folder
+cp ../main.py ../mock_tools.py ../requirements.txt app/<AgentName>/
+
+# 4. Set up dependencies (pyproject.toml required by agentcore deploy)
+cd app/<AgentName>
+uv init --bare --python 3.13
+uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3 nest-asyncio
+cd ../..
+
+# 5. Deploy (builds container, provisions Runtime)
+agentcore deploy
 ```
 
-The script:
-1. Creates an S3 bucket for code bundles (reused across modules)
-2. Packages code with all dependencies for Linux ARM64
-3. Creates an IAM execution role with least-privilege Bedrock + CloudWatch permissions
-4. Creates the AgentCore Runtime (`codeConfiguration`, `PYTHON_3_13`)
-5. Waits for `READY` status and prints the Runtime ARN
+First deploy takes 3–5 minutes. Later updates reuse cached layers and are faster.
 
----
-
-## Invoke
+## Test
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m4_parallel-XXXXX
+# CLI
+agentcore invoke "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
+
+# With session ID (for multi-turn context, must be 33+ chars):
+agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
 ```
 
-Or with boto3:
-
 ```python
+# boto3: production invocation pattern
 import json, uuid, boto3
-from botocore.config import Config
 
-client = boto3.client(
-    "bedrock-agentcore",
-    region_name="us-east-1",
-    config=Config(read_timeout=300),
-)
+from botocore.config import Config
+client = boto3.client("bedrock-agentcore", region_name="us-east-1",
+    config=Config(read_timeout=300))  # pipelines can take 60-180s
 response = client.invoke_agent_runtime(
-    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m4_parallel-XXXXX",
-    runtimeSessionId=str(uuid.uuid4()),  # 33-256 chars
+    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT>:runtime/<ARN-suffix>",
+    runtimeSessionId=str(uuid.uuid4()),   # 33+ chars; uuid4 satisfies this
     payload=json.dumps({
-        "prompt": "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
+        "prompt": "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV.",
+        "session_id": str(uuid.uuid4()),  # used by OTEL to group spans
     }).encode(),
     qualifier="DEFAULT",
 )
-raw = response["response"].read()
-result = json.loads(raw)
-print(result.get("response", result) if isinstance(result, dict) else result)
+result = json.loads(response["response"].read())
+print(result)
 ```
-
----
-
-## Multi-turn chat
-
-Reuse the same `runtimeSessionId` across calls to route requests to the same container. The agent uses `SlidingWindowConversationManager(window_size=20)` to keep conversation history in the container.
-
----
-
-## Cleanup
-
-```bash
-python cleanup.py --name-prefix m4          # delete Runtime + IAM role + S3
-python cleanup.py --name-prefix m4 --dry-run
-```
-
----
 
 ## Observability
 
-AgentCore sends all telemetry to **Amazon CloudWatch**:
+### Enable CloudWatch Transaction Search (one-time per account)
 
-- **Logs:** `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT`
-- **Traces:** CloudWatch Transaction Search (under X-Ray settings > GenAI Observability)
+```python
+import boto3
+logs = boto3.client("logs", region_name="us-east-1")
+xray = boto3.client("xray", region_name="us-east-1")
 
-GraphBuilder parallel execution produces child spans for each analyzer node, visible in the trace view.
+# Enable OTEL trace indexing
+xray.update_trace_segment_destination(destination="CloudWatchLogs")
+logs.create_log_group(logGroupName="aws/spans")
+```
 
----
+### Add OTEL to uv dependencies (already in requirements.txt)
 
-## References
+`aws-opentelemetry-distro` is included. When `agentcore deploy` builds the container,
+it installs OTEL automatically. No extra config needed.
 
-- [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
-- [Strands Agents GraphBuilder](https://strandsagents.com)
-- [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)
+### What you'll see in CloudWatch
+
+Navigate to **CloudWatch → X-Ray → Traces** or **GenAI Observability**:
+
+- **Per-invocation trace**: one root span per `invoke_agent_runtime` call
+- **Per-agent spans**: each `Agent()` call creates a child span tagged with `session.id`
+- **Tool call spans**: each tool call (researcher, analyzer, etc.) is a nested span
+- **Duration breakdown**: see exactly where time is spent across the pipeline
+
+Session ID is propagated via OTEL baggage so all spans from the same invocation
+are grouped together, even across nested agent calls.
+
+### Check traces
+
+```bash
+# View recent invocations
+agentcore status
+
+# CloudWatch Logs Insights query for your Runtime
+aws logs start-query \
+  --log-group-name /aws/bedrock-agentcore/parallel \
+  --start-time $(date -d '1 hour ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
+```
+
+## Cleanup
+
+**Two steps: both required:**
+
+```bash
+# Step 1: Reset local config (does NOT touch AWS)
+agentcore remove all -y
+
+# Step 2: Apply teardown — removes the Runtime and ECR image from AWS
+agentcore deploy
+```
+
+> `agentcore remove all -y` only resets the local `agentcore/agentcore.json`.
+> The follow-up `agentcore deploy` is what actually deletes the CloudFormation stack
+> and the AgentCore Runtime endpoint from your account.
+
+To verify cleanup is complete:
+
+```bash
+# Check no Runtimes remain
+aws bedrock-agentcore list-agent-runtimes --region us-east-1
+
+# Verify Runtime is gone
+aws bedrock-agentcore list-agent-runtimes --region us-east-1
+```

@@ -15,7 +15,7 @@ An LLM orchestrator that uses three specialist agents as tools. The model decide
 
 | File | Purpose |
 |------|---------|
-| `module-06.ipynb` | Step-by-step: prompts → wrap tools → orchestrator → inspect calls → metrics |
+| `module-07.ipynb` | Step-by-step: prompts → wrap tools → orchestrator → inspect calls → metrics |
 | `chat.py` | Run the orchestrator interactively |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 
