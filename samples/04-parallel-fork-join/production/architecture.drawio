@@ -123,7 +123,13 @@
         <mxCell id="lt_inf" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fillColor=none;strokeColor=none;" value="Model inference (Bedrock)" vertex="1">
           <mxGeometry height="22" width="160" x="823" y="341" as="geometry" />
         </mxCell>
-      </root>
+      
+    <!-- sessionId: routes to same container for same conversation -->
+    <mxCell id="session_note_sr" value="sessionId = runtimeSessionId" style="text;html=1;whiteSpace=wrap;strokeColor=#999999;fillColor=#f5f5f5;align=center;verticalAlign=middle;rounded=1;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="240" y="20" width="150" height="22" as="geometry" />
+    </mxCell>
+
+  </root>
     </mxGraphModel>
   </diagram>
 </mxfile>
