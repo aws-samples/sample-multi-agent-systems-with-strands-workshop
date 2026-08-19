@@ -5,6 +5,10 @@ Used by deploy.py and cleanup.py in multi-runtime modules (07, 08).
 API-verified: create_agent_runtime with codeConfiguration, PYTHON_3_13, PUBLIC network.
 """
 import io, json, os, tempfile, threading, time, zipfile
+
+# Serialize pip calls across threads — pip._internal is not thread-safe
+_PIP_LOCK = threading.Lock()
+
 from pathlib import Path
 
 import boto3
@@ -71,14 +75,15 @@ def zip_folder(folder: Path) -> bytes:
         req = folder / "requirements.txt"
         if req.exists():
             from pip._internal.cli.main import main as _pip_main
-            exit_code = _pip_main([
-                "install", "-r", str(req),
-                "-t", tmpdir,
-                "--platform", "manylinux2014_aarch64",
-                "--python-version", "3.13",
-                "--only-binary=:all:",
-                "--quiet", "--no-warn-script-location",
-            ])
+            with _PIP_LOCK:
+                exit_code = _pip_main([
+                    "install", "-r", str(req),
+                    "-t", tmpdir,
+                    "--platform", "manylinux2014_aarch64",
+                    "--python-version", "3.13",
+                    "--only-binary=:all:",
+                    "--quiet", "--no-warn-script-location",
+                ])
             if exit_code != 0:
                 raise RuntimeError(f"pip install (Linux ARM64) failed for {folder}")
 
@@ -187,8 +192,15 @@ def create_runtime(
     s3_key: str,
     role_arn: str,
     env_vars: dict = None,
+    protocol: str = "HTTP",
 ) -> tuple:
-    """Create an AgentCore runtime. Returns (runtime_id, runtime_arn)."""
+    """Create an AgentCore runtime. Returns (runtime_id, runtime_arn).
+
+    Args:
+        protocol: "HTTP" (default, port 8080, BedrockAgentCoreApp) or
+                  "A2A"  (port 9000, serve_a2a, JSON-RPC 2.0).
+        See: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
+    """
     kwargs = dict(
         agentRuntimeName=name,
         agentRuntimeArtifact={
@@ -203,6 +215,8 @@ def create_runtime(
     )
     if env_vars:
         kwargs["environmentVariables"] = env_vars
+    if protocol != "HTTP":
+        kwargs["protocolConfiguration"] = {"serverProtocol": protocol}
     resp = ctl_client.create_agent_runtime(**kwargs)
     return resp["agentRuntimeId"], resp["agentRuntimeArn"]
 

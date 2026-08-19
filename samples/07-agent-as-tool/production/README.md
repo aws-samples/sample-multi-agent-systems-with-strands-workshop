@@ -108,6 +108,42 @@ aws logs start-query \
   --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
 ```
 
+
+---
+
+## Sample brief to test the pipeline
+
+Use this brief to test the full Agent-as-Tool pipeline (Researcher → Analyst → Synthesizer):
+
+```
+We are considering launching a Premium Subscription Tier for NovaCart's
+top-performing product line. The subscription would offer priority shipping,
+exclusive discounts, and early access to new products. The target is to
+increase Customer Lifetime Value (CLV) by 15% within 6 months. Current
+blended CLV is approximately $1,420. The rollout plan is a 5% customer
+cohort pilot with a kill switch. Key questions: Can our current revenue base
+support the investment? Which SKUs should anchor the subscription based on
+sales performance? What are the conversion and weekly sales trends to justify
+timing? Stakeholders include VP of Product, Finance Lead, and Operations.
+Options: (A) Launch pilot in Q3 with top 2 SKUs, (B) Delay until full product
+catalog analysis is complete, (C) Launch a limited free-tier first to gauge
+interest. The decision is needed within 2 weeks.
+```
+
+Run with `chat.py` for interactive multi-turn:
+
+```bash
+python chat.py \
+  --actor-id user-123 \
+  --runtime-arn <ORCHESTRATOR_ARN>
+```
+
+Then paste the brief at the `You:` prompt.
+
+**Note on timing:** The first call takes 3-5 minutes — cold start loads A2A dependencies
+and the chain calls 3 specialist runtimes. Subsequent turns in the same session are faster
+(container warm, agent history preserved via SlidingWindowConversationManager).
+
 ## Cleanup
 
 **Two steps: both required:**
