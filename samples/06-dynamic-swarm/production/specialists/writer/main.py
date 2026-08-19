@@ -1,4 +1,4 @@
-"""Synthesizer specialist — A2A Runtime."""
+"""Writer specialist — A2A Runtime (Pattern 4: Dynamic Swarm)."""
 import logging
 from bedrock_agentcore.runtime import serve_a2a
 from strands import Agent
@@ -6,8 +6,9 @@ from strands.multiagent.a2a.executor import StrandsA2AExecutor
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = (
-    "Write a leadership memo: Recommendation, Options table A/B/C, "
-    "Top 3 Risks, Success Metrics, Decision Required. Under 400 words."
+    "You are an executive memo writer. Write the final leadership decision memo:\n"
+    "## Recommendation, ## Options table (A/B/C), "
+    "## Top 3 Risks+mitigations, ## Success Metrics, ## Decision Required."
 )
 _agent = None
 def get_agent():

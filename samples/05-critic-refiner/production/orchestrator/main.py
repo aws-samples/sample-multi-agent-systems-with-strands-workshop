@@ -1,7 +1,6 @@
 """
-Parallel Fork-Join Orchestrator (Pattern 2) — A2A + GraphBuilder DAG.
-researcher → [analyzer_a, analyzer_b, analyzer_c] → synthesizer
-Same ANALYZER_ARN used 3x in parallel.
+Critic-Refiner Orchestrator (Pattern 3) — A2A + GraphBuilder.
+researcher → critic_refiner (quality loop internal to specialist)
 https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/
 https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
 """
@@ -15,11 +14,10 @@ from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
-REGION          = os.environ.get("AWS_REGION", "us-east-1")
-RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYZER_ARN    = os.environ["ANALYZER_RUNTIME_ARN"]
-SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
-ACTOR_HEADER    = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
+REGION             = os.environ.get("AWS_REGION", "us-east-1")
+RESEARCHER_ARN     = os.environ["RESEARCHER_RUNTIME_ARN"]
+CRITIC_REFINER_ARN = os.environ["CRITIC_REFINER_RUNTIME_ARN"]
+ACTOR_HEADER       = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
 _pipelines: dict[str, "GraphBuilder"] = {}
 
 
@@ -39,23 +37,12 @@ def _make(arn, name, desc, aid) -> A2AAgent:
 
 def _get_pipeline(sid, aid):
     if sid not in _pipelines:
-        researcher  = _make(RESEARCHER_ARN,  "researcher",  "Market research.", aid)
-        analyzer_a  = _make(ANALYZER_ARN, "analyzer_a", "Option A ($19.99/mo).", aid)
-        analyzer_b  = _make(ANALYZER_ARN, "analyzer_b", "Option B ($14.99/mo).", aid)
-        analyzer_c  = _make(ANALYZER_ARN, "analyzer_c", "Option C ($12.99/mo).", aid)
-        synthesizer = _make(SYNTHESIZER_ARN, "synthesizer", "Memo writer.", aid)
+        researcher    = _make(RESEARCHER_ARN,     "researcher",    "Market research.", aid)
+        critic_refiner = _make(CRITIC_REFINER_ARN, "critic_refiner", "Writer-Critic loop.", aid)
         b = GraphBuilder()
-        b.add_node(researcher, "researcher")
-        b.add_node(analyzer_a, "analyzer_a")
-        b.add_node(analyzer_b, "analyzer_b")
-        b.add_node(analyzer_c, "analyzer_c")
-        b.add_node(synthesizer, "synthesizer")
-        b.add_edge("researcher", "analyzer_a")
-        b.add_edge("researcher", "analyzer_b")
-        b.add_edge("researcher", "analyzer_c")
-        b.add_edge("analyzer_a", "synthesizer")
-        b.add_edge("analyzer_b", "synthesizer")
-        b.add_edge("analyzer_c", "synthesizer")
+        b.add_node(researcher,     "researcher")
+        b.add_node(critic_refiner, "critic_refiner")
+        b.add_edge("researcher", "critic_refiner")
         b.set_execution_timeout(600)
         _pipelines[sid] = b
     return _pipelines[sid]
@@ -69,7 +56,7 @@ def invoke(payload, context):
     sid, aid = _current_session()
     result = _get_pipeline(sid, aid).build()(brief)
     for node in reversed(result.execution_order):
-        if node.node_id == "synthesizer":
+        if node.node_id == "critic_refiner":
             return str(node.result).strip()
     return str(result).strip()
 
