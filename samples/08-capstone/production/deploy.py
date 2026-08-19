@@ -61,8 +61,8 @@ def main():
 
     if args.dry_run:
         print(f"Dry run (prefix={prefix}, account={account})")
-        names = [f"{prefix}-researcher", f"{prefix}-analyzer",
-                 f"{prefix}-criticref", f"{prefix}-orchestrator"]
+        names = [f"{prefix}_researcher", f"{prefix}_analyzer",
+                 f"{prefix}_criticref", f"{prefix}_orchestrator"]
         for n in names:
             print(f"  would create runtime: {n}  (len={len(n)})")
         return
