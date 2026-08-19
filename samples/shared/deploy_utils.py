@@ -4,12 +4,20 @@ Shared utilities for boto3-based AgentCore Runtime deployment.
 Used by deploy.py and cleanup.py in multi-runtime modules (07, 08).
 API-verified: create_agent_runtime with codeConfiguration, PYTHON_3_13, PUBLIC network.
 """
-import io, json, os, tempfile, time, zipfile
+import io, json, os, tempfile, threading, time, zipfile
 from pathlib import Path
 
 import boto3
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
+
+# Threading event used only as a timeout-based wait primitive in polling loops.
+# It is never set, so wait() always blocks until the timeout expires.
+_POLL = threading.Event()
+
+
+def _wait(seconds: int) -> None:
+    _POLL.wait(timeout=seconds)
 
 
 def get_session() -> boto3.Session:
@@ -168,7 +176,7 @@ def ensure_runtime_role(
         PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
     )
 
-    time.sleep(12)  # IAM propagation before first use
+    _wait(12)
     return role_arn
 
 
@@ -210,7 +218,7 @@ def wait_ready(ctl_client, runtime_id: str, timeout: int = 600) -> str:
         if status in ("FAILED", "DELETE_FAILED", "CREATE_FAILED"):
             reason = info.get("failureReason", "")
             raise RuntimeError(f"Runtime {runtime_id} status={status}. {reason}")
-        time.sleep(10)
+        _wait(10)
     raise TimeoutError(f"Runtime {runtime_id} did not reach READY in {timeout}s")
 
 

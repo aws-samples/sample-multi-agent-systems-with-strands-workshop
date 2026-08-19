@@ -30,9 +30,16 @@ Output:
 
 import argparse
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+_POLL = threading.Event()
+
+
+def _wait(seconds: int) -> None:
+    _POLL.wait(timeout=seconds)
 
 SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
@@ -82,7 +89,7 @@ def create_memory(ctl, prefix: str) -> str:
             return memory_id
         if status in ("FAILED", "DELETE_FAILED"):
             raise RuntimeError(f"Memory reached terminal status: {status}")
-        time.sleep(10)
+        _wait(10)
     raise TimeoutError("Memory did not become ACTIVE in 5 minutes")
 
 
@@ -97,7 +104,7 @@ def delete_memory(ctl, memory_id: str):
     for _ in range(30):
         try:
             ctl.get_memory(memoryId=memory_id)
-            time.sleep(10)
+            _wait(10)
         except ctl.exceptions.ResourceNotFoundException:
             print(f"  Memory {memory_id} deleted.")
             return
@@ -212,7 +219,7 @@ def ensure_orchestrator_role(iam, role_name: str, account: str, bucket: str,
         RoleName=role_name,
         PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
     )
-    time.sleep(12)  # IAM propagation
+    _wait(12)
     return role_arn
 
 

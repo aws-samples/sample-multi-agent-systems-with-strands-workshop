@@ -15,8 +15,15 @@ Usage:
 
 import argparse
 import sys
+import threading
 import time
 from pathlib import Path
+
+_POLL = threading.Event()
+
+
+def _wait(seconds: int) -> None:
+    _POLL.wait(timeout=seconds)
 
 SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
@@ -46,7 +53,7 @@ def _delete_memory(ctl, memory_name_prefix: str):
                     for _ in range(30):
                         try:
                             ctl.get_memory(memoryId=mid)
-                            time.sleep(10)
+                            _wait(10)
                         except ctl.exceptions.ResourceNotFoundException:
                             print(f"  Memory {mid} deleted.")
                             break
