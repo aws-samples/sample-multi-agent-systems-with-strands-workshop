@@ -14,29 +14,24 @@ Deploy this module as an Amazon Bedrock AgentCore Runtime.
 
 ## Deploy
 
+Run these commands from the `production/` folder.
+
 ```bash
-# 1. Create the project
-agentcore create          # name: 05-runtime (or any name)
-cd <project-name>
+# Navigate to this folder
+cd samples/06-dynamic-swarm/production
 
-# 2. Add the agent
-agentcore add
-# Choose: agent → Bring my own code → entrypoint: main.py → Direct Code Deploy
+# Configure the agent for deployment
+agentcore configure -e main.py
+# When prompted for a name, enter one <= 23 characters, e.g.: swarm
 
-# 3. Copy the runtime files into the agent folder
-cp ../main.py ../mock_tools.py ../requirements.txt app/<AgentName>/
-
-# 4. Set up dependencies (pyproject.toml required by agentcore deploy)
-cd app/<AgentName>
-uv init --bare --python 3.13
-uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3
-cd ../..
-
-# 5. Deploy (builds container, provisions Runtime)
+# Deploy (packages code to S3, provisions Runtime via CloudFormation: ~3-5 min)
 agentcore deploy
+
+# Invoke from terminal (pass the Runtime ARN printed by deploy)
+python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT_ID:agentRuntime/RUNTIME_ID
 ```
 
-First deploy takes 3–5 minutes. Later updates reuse cached layers and are faster.
+When the deploy finishes, the output includes the **Runtime ARN**. Copy it and pass it to `invoke.py`.
 
 ## Test
 

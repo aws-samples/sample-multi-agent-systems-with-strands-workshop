@@ -88,43 +88,24 @@ The Orchestrator reads both from the request context and propagates them to all 
 
 ## Deploy
 
+Run these commands from the `production/` folder.
+
 ```bash
+# Navigate to this folder
 cd samples/08-capstone/production
 
-python deploy.py                    # creates Memory + 4 runtimes, default prefix m8
-python deploy.py --name-prefix m8ws # custom prefix (max 8 chars)
-python deploy.py --skip-memory      # deploy without Memory (uses SlidingWindow instead)
-python deploy.py --dry-run          # preview without creating
+# Configure the agent for deployment
+agentcore configure -e main.py
+# When prompted for a name, enter one <= 23 characters, e.g.: capstone
+
+# Deploy (packages code to S3, provisions Runtime via CloudFormation: ~3-5 min)
+agentcore deploy
+
+# Invoke from terminal (pass the Runtime ARN printed by deploy)
+python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT_ID:agentRuntime/RUNTIME_ID
 ```
 
-What `deploy.py` does:
-
-1. Creates an **AgentCore Memory** resource with a SEMANTIC strategy that extracts user facts to `/facts/{actorId}`
-2. Waits for Memory to reach `ACTIVE` status
-3. Deploys the 3 specialist runtimes **in parallel**
-4. Deploys the Orchestrator with:
-   - Specialist ARNs as env vars
-   - `BEDROCK_AGENTCORE_MEMORY_ID` env var
-   - IAM permissions for Memory data-plane operations (CreateEvent, ListEvents, RetrieveMemoryRecords, etc.)
-
-**Output:**
-```
-=== Step 1: Create AgentCore Memory ===
-  Memory ACTIVE: m8CapstoneMemory-XXXXXXXXXX
-
-=== Step 2: Deploy specialists in parallel ===
-  [m8_researcher] READY: arn:...
-  [m8_analyzer]   READY: arn:...
-  [m8_criticref]  READY: arn:...
-
-=== Step 3: Deploy orchestrator ===
-  [m8_orchestrator] READY: arn:...
-
-Memory ID:        m8CapstoneMemory-XXXXXXXXXX
-Orchestrator ARN: arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m8_orchestrator-XXXXX
-```
-
----
+When the deploy finishes, the output includes the **Runtime ARN**. Copy it and pass it to `invoke.py`.
 
 ## Multi-turn chat
 
