@@ -14,13 +14,13 @@ Build, deploy, and scale multi-agent systems using reusable patterns with the [S
 
 | Module | Description | Pattern | Stack |
 |--------|-------------|---------|-------|
-| [01 Strands Foundations](./samples/01-strands-foundations/) | Single agent with tools, loop inspection, and the single-agent ceiling | Foundations | ![Strands](https://img.shields.io/badge/Strands-Agent-FF9900) |
-| [02 Sequential Chain](./samples/02-sequential-chain/) | Research → Analyst → Synthesizer pipeline; each stage passes output to the next | Pattern 1 | ![Strands](https://img.shields.io/badge/Strands-Sequential-FF9900) |
-| [03 Parallel Fork-Join](./samples/03-parallel-fork-join/) | Three option analyzers run simultaneously via `asyncio.gather`; results merged | Pattern 2 | ![Strands](https://img.shields.io/badge/Strands-Parallel-FF9900) |
-| [04 Critic-Refiner](./samples/04-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until approved - `GraphBuilder` cycle | Pattern 3 | ![Strands](https://img.shields.io/badge/Strands-GraphBuilder-FF9900) |
-| [05 Dynamic Swarm](./samples/05-dynamic-swarm/) | Agents hand off autonomously; routing emerges at runtime - no fixed path | Pattern 4 | ![Strands](https://img.shields.io/badge/Strands-Swarm-FF9900) |
-| [06 Agent-as-Tool](./samples/06-agent-as-tool/) | LLM orchestrator delegates to specialist agents wrapped as `@tool` functions | Pattern 5 | ![Strands](https://img.shields.io/badge/Strands-AgentTool-FF9900) |
-| [07 Capstone](./samples/07-capstone/) | Decision-Memo System combining all four patterns; deploys to AgentCore Runtime | P1+P2+P3+P5 | ![AgentCore](https://img.shields.io/badge/AgentCore-Runtime-01A88D) |
+| [01 Strands Foundations](./samples/01-foundations/) | Single agent with tools, loop inspection, and the single-agent ceiling | Foundations | ![Strands](https://img.shields.io/badge/Strands-Agent-FF9900) |
+| [02 Sequential Chain](./samples/03-sequential-chain/) | Research → Analyst → Synthesizer pipeline; each stage passes output to the next | Pattern 1 | ![Strands](https://img.shields.io/badge/Strands-Sequential-FF9900) |
+| [03 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Three option analyzers run simultaneously via `asyncio.gather`; results merged | Pattern 2 | ![Strands](https://img.shields.io/badge/Strands-Parallel-FF9900) |
+| [04 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until approved - `GraphBuilder` cycle | Pattern 3 | ![Strands](https://img.shields.io/badge/Strands-GraphBuilder-FF9900) |
+| [05 Dynamic Swarm](./samples/06-dynamic-swarm/) | Agents hand off autonomously; routing emerges at runtime - no fixed path | Pattern 4 | ![Strands](https://img.shields.io/badge/Strands-Swarm-FF9900) |
+| [06 Agent-as-Tool](./samples/07-agent-as-tool/) | LLM orchestrator delegates to specialist agents wrapped as `@tool` functions | Pattern 5 | ![Strands](https://img.shields.io/badge/Strands-AgentTool-FF9900) |
+| [07 Capstone](./samples/08-capstone/) | Decision-Memo System combining all four patterns; deploys to AgentCore Runtime | P1+P2+P3+P5 | ![AgentCore](https://img.shields.io/badge/AgentCore-Runtime-01A88D) |
 
 Each module from **02 to 07** includes a `production/` subfolder - a self-contained AgentCore Runtime ready for `agentcore deploy`.
 
@@ -30,7 +30,7 @@ Each module from **02 to 07** includes a `production/` subfolder - a self-contai
 
 The **Decision-Memo System** - a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo with options A/B/C, risks, success metrics, and a recommendation.
 
-![Decision-Memo System: Decision Brief enters an Orchestrator (Agent-as-Tool) that coordinates a Researcher (Sequential), three parallel Analyzers (Fork-Join), and a Critic-Refiner quality loop, producing a Leadership Memo](./samples/07-capstone/architecture.png)
+![Decision-Memo System: Decision Brief enters an Orchestrator (Agent-as-Tool) that coordinates a Researcher (Sequential), three parallel Analyzers (Fork-Join), and a Critic-Refiner quality loop, producing a Leadership Memo](./samples/08-capstone/architecture.png)
 
 ---
 
@@ -59,7 +59,7 @@ git clone https://github.com/elizabethfuentes12/multi-agent-systems-with-strands
 cd multi-agent-systems-with-strands-workshop
 ```
 
-Then open `samples/01-strands-foundations/` and run `module-01.ipynb`.
+Then open `samples/01-foundations/` and run `module-01.ipynb`.
 
 ---
 
@@ -83,7 +83,7 @@ aws configure   # Strands uses Amazon Bedrock by default
 Each module has its own `requirements.txt`. Install only what you need:
 
 ```bash
-cd samples/02-sequential-chain
+cd samples/03-sequential-chain
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
@@ -137,7 +137,7 @@ orchestrator("Evaluate NovaCart Premium Tier launch - brief attached.")
 Each module from 02 to 07 has a `production/` subfolder - a self-contained AgentCore Runtime. Deploy any of them:
 
 ```bash
-cd samples/02-sequential-chain/production/
+cd samples/03-sequential-chain/production/
 
 agentcore create                  # name the project
 cd <project-name>
