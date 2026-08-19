@@ -1,9 +1,9 @@
 """
-Cleanup Module 3: Sequential Chain — delete AgentCore Runtime and IAM role.
+Cleanup Module 05: Critic-Refiner — delete AgentCore Runtime and IAM role.
 
 Usage:
-    python cleanup.py --name-prefix m3
-    python cleanup.py --name-prefix m3 --dry-run
+    python cleanup.py --name-prefix m5
+    python cleanup.py --name-prefix m5 --dry-run
 """
 
 import argparse
@@ -15,20 +15,20 @@ sys.path.insert(0, str(SHARED))
 import deploy_utils as u
 
 REGION = "us-east-1"
-MODULE = "m3-sequential-chain"
+MODULE = "m5-critic-refiner"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Delete Module 3 AgentCore Runtime")
+    parser = argparse.ArgumentParser(description="Delete Module 05 AgentCore Runtime")
     parser.add_argument("--name-prefix", required=True,
-                        help="Prefix used when deploying (e.g. m3)")
+                        help="Prefix used when deploying (e.g. m5)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be deleted without deleting")
     args = parser.parse_args()
     prefix = args.name_prefix[:20]
 
-    runtime_name = f"{prefix}_seqchain"
-    role_name    = f"agentcore-{prefix}-seqchain-role"
+    runtime_name = f"{prefix}_critic"
+    role_name    = f"agentcore-{prefix}-critic-role"
 
     session = u.get_session()
     account = u.get_account(session)
