@@ -4,7 +4,7 @@ Shared utilities for boto3-based AgentCore Runtime deployment.
 Used by deploy.py and cleanup.py in multi-runtime modules (07, 08).
 API-verified: create_agent_runtime with codeConfiguration, PYTHON_3_13, PUBLIC network.
 """
-import io, json, os, subprocess, sys, tempfile, time, zipfile  # nosec B404 - subprocess used only for pip install with hardcoded args
+import io, json, os, tempfile, time, zipfile
 from pathlib import Path
 
 import boto3
@@ -62,19 +62,17 @@ def zip_folder(folder: Path) -> bytes:
     with tempfile.TemporaryDirectory() as tmpdir:
         req = folder / "requirements.txt"
         if req.exists():
-            # Install Linux ARM64 compatible wheels — AgentCore codeConfiguration
-            # runs on Linux ARM64 and does NOT install requirements at runtime.
-            result = subprocess.run(  # nosec B603 - args are hardcoded except req path which is an internal filesystem Path, not user input
-                [sys.executable, "-m", "pip", "install", "-r", str(req),
-                 "-t", tmpdir,
-                 "--platform", "manylinux2014_aarch64",
-                 "--python-version", "3.13",
-                 "--only-binary=:all:",
-                 "--quiet", "--no-warn-script-location"],
-                capture_output=True, text=True,
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"pip install (Linux ARM64) failed for {folder}:\n{result.stderr}")
+            from pip._internal.cli.main import main as _pip_main
+            exit_code = _pip_main([
+                "install", "-r", str(req),
+                "-t", tmpdir,
+                "--platform", "manylinux2014_aarch64",
+                "--python-version", "3.13",
+                "--only-binary=:all:",
+                "--quiet", "--no-warn-script-location",
+            ])
+            if exit_code != 0:
+                raise RuntimeError(f"pip install (Linux ARM64) failed for {folder}")
 
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
             # Add installed packages first
