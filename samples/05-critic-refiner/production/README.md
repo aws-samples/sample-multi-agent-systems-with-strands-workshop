@@ -1,4 +1,4 @@
-# Module 5 - Critic-Refiner: Production Deployment
+# Pattern 3: Critic-Refiner - Production Deployment
 
 Deploy the Critic-Refiner pattern to Amazon Bedrock AgentCore Runtime.
 

@@ -1,4 +1,4 @@
-# Module 7 - Agent-as-Tool: Production Deployment
+# Pattern 5: Agent-as-Tool - Production Deployment
 
 Deploy the Agent-as-Tool pattern to Amazon Bedrock AgentCore: 4 Runtimes coordinated by an Orchestrator.
 

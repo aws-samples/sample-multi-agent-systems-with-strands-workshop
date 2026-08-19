@@ -1,4 +1,4 @@
-# Module 6 - Dynamic Swarm: Production Deployment
+# Pattern 4: Dynamic Swarm - Production Deployment
 
 Deploy the Dynamic Swarm pattern to Amazon Bedrock AgentCore Runtime.
 

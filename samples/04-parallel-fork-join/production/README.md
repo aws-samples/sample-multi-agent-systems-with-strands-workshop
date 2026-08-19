@@ -1,4 +1,4 @@
-# Module 4 - Parallel Fork-Join: Production Deployment
+# Pattern 2: Parallel Fork-Join - Production Deployment
 
 Deploy the Parallel Fork-Join pattern to Amazon Bedrock AgentCore Runtime.
 

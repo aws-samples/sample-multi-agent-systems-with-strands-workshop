@@ -1,4 +1,4 @@
-# Module 3 - Sequential Chain: Production Deployment
+# Pattern 1: Sequential Chain - Production Deployment
 
 Deploy the Sequential Chain pattern to Amazon Bedrock AgentCore Runtime.
 

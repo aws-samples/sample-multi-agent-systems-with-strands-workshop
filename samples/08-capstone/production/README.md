@@ -1,4 +1,4 @@
-# Module 8 - Capstone: Production Deployment
+# Capstone (P1+P2+P3+P5) - Production Deployment
 
 Deploy the Capstone pattern to Amazon Bedrock AgentCore: 4 Runtimes + AgentCore Memory for persistent multi-turn conversations.
 
