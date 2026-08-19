@@ -1,26 +1,24 @@
 """
-M7 Capstone: Orchestrator Runtime — with AgentCore Memory.
+Capstone Orchestrator Runtime — A2A + AgentCore Memory.
 
 Architecture:
-  User ──► Orchestrator (this runtime)
-              ├── researcher_agent  → Researcher Runtime
-              ├── parallel_analyzers → Analyzer Runtime ×3 (concurrent)
-              └── critic_refiner    → Critic-Refiner Runtime
+  chat.py ──invoke_agent_runtime──► Orchestrator (HTTP, port 8080)
+                                        │ A2AAgent (SigV4, port 9000)
+                                        ├──► Researcher Runtime
+                                        ├──► Analyzer Runtime ×3 (concurrent)
+                                        └──► Critic-Refiner Runtime
 
 Session management:
-  - actorId  : permanent user identity, arrives as custom HTTP header
-                X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id
-  - sessionId: unique conversation ID = runtimeSessionId from invoke_agent_runtime,
-                arrives as context.session_id (injected by AgentCore service as
-                X-Amzn-Bedrock-AgentCore-Runtime-Session-Id header)
+  sessionId : context.session_id (= runtimeSessionId) — routes to same container
+  actorId   : context.request_headers X-Amzn-...-Custom-Actor-Id — LTM scope
 
-Memory strategy:
-  - MEMORY_ID set  → AgentCoreMemorySessionManager (STM + LTM, persists across sessions)
-  - MEMORY_ID unset → SlidingWindowConversationManager (in-container only, no persistence)
+Memory (when BEDROCK_AGENTCORE_MEMORY_ID is set):
+  AgentCoreMemorySessionManager — stores STM events, extracts LTM facts per actorId.
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html
 
-The singleton is initialized on the FIRST call and reused for the container lifetime.
-AgentCore routes all calls with the same runtimeSessionId to the same container,
-so actor_id and session_id are stable for the container's lifetime.
+A2A calls run in isolated threads (asyncio.new_event_loop) to avoid conflicts
+with BedrockAgentCoreApp's worker loop.
+https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool
 
 Environment variables required:
   RESEARCHER_RUNTIME_ARN
@@ -28,264 +26,233 @@ Environment variables required:
   CRITIC_REFINER_RUNTIME_ARN
 
 Optional:
-  BEDROCK_AGENTCORE_MEMORY_ID   — enables AgentCore Memory (STM + LTM)
-  AWS_REGION                    — defaults to us-east-1
+  BEDROCK_AGENTCORE_MEMORY_ID  — enables AgentCore Memory (STM + LTM)
+  AWS_REGION                   — defaults to us-east-1
 """
 
 import asyncio
-import json
+import concurrent.futures
 import logging
 import os
-import uuid
-
-import boto3
-from botocore.config import Config as BotocoreConfig
+import sys
+import threading
+from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from strands import Agent, tool
+from strands.agent.a2a_agent import A2AAgent
+
+# a2a_utils.py is bundled alongside this file in the deployment ZIP
+from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 
 logger = logging.getLogger(__name__)
-app = BedrockAgentCoreApp()
+app    = BedrockAgentCoreApp()
 
-# ── Environment ───────────────────────────────────────────────────────────────
 REGION             = os.environ.get("AWS_REGION", "us-east-1")
-MEMORY_ID          = os.environ.get("BEDROCK_AGENTCORE_MEMORY_ID")   # optional
+MEMORY_ID          = os.environ.get("BEDROCK_AGENTCORE_MEMORY_ID")
 RESEARCHER_ARN     = os.environ["RESEARCHER_RUNTIME_ARN"]
 ANALYZER_ARN       = os.environ["ANALYZER_RUNTIME_ARN"]
 CRITIC_REFINER_ARN = os.environ["CRITIC_REFINER_RUNTIME_ARN"]
 
-# The custom header name that carries the actorId into this container.
-# Normalized to lowercase by AgentCore (HTTP/2 convention).
 ACTOR_HEADER = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
 
 ORCHESTRATOR_PROMPT = (
-    "Coordinate: 1.Call researcher_agent. "
-    "2.Call parallel_analyzers with brief and research. "
-    "3.Call critic_refiner with brief and analyses. Execute all three steps."
+    "You coordinate the Capstone Decision-Memo pipeline. Execute ALL steps:\n"
+    "1. Call researcher_agent with the full decision brief.\n"
+    "2. Call parallel_analyzers with the brief and research (runs Options A/B/C simultaneously).\n"
+    "3. Call critic_refiner with the brief and all analyses.\n"
+    "Execute all three steps in sequence. Do not skip any step."
 )
 
-# ── Singletons (one per container lifetime) ───────────────────────────────────
-_orchestrator = None     # Strands Agent — holds conversation history
-_runtime_client = None   # boto3 client pre-wired with actor_id header
-_actor_id: str = None    # captured on first invocation, stable for container lifetime
+# ── Per-session state ──────────────────────────────────────────────────────────
+# Keyed by session_id so each session has isolated history and actor identity.
+# Prevents actor ID contamination and conversation history leaks across sessions.
+_researchers:   dict[str, "A2AAgent"] = {}
+_analyzers:     dict[str, "A2AAgent"] = {}
+_critic_refs:   dict[str, "A2AAgent"] = {}
+_orchestrators: dict[str, "Agent"]    = {}
 
 
-def _get_runtime_client():
-    """Lazily create a boto3 bedrock-agentcore client that injects the actor_id
-    custom header on every invoke_agent_runtime call.
-
-    The header propagates the caller's identity to specialist runtimes so they
-    can scope their own Memory operations to the same actor.
+def _current_session() -> tuple:
+    """Return (session_id, actor_id) from the current request context.
+    Read on every invocation — never cached globally.
     """
-    global _runtime_client, _actor_id
-    if _runtime_client is None:
-        # Capture actor_id from the current request context.
-        # BedrockAgentCoreContext is a ContextVar set before the entrypoint runs.
-        headers = BedrockAgentCoreContext.get_request_headers() or {}
-        _actor_id = (
-            headers.get(ACTOR_HEADER)
-            or headers.get(ACTOR_HEADER.upper())
-            or "default-user"
+    import uuid
+    headers    = BedrockAgentCoreContext.get_request_headers() or {}
+    actor_id   = headers.get(ACTOR_HEADER) or "default-user"
+    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
+    return session_id, actor_id
+
+
+def _get_researcher(sid: str, aid: str) -> A2AAgent:
+    if sid not in _researchers:
+        agent = A2AAgent(
+            endpoint=a2a_endpoint(RESEARCHER_ARN, REGION),
+            client_config=make_a2a_config(aid, REGION),
+            name="researcher",
+            description="Market research specialist.",
         )
-        logger.info("actor_id captured for container lifetime: %s", _actor_id)
+        agent._agent_card = build_agent_card(RESEARCHER_ARN, "researcher",
+            "Market research specialist.", REGION)
+        _researchers[sid] = agent
+    return _researchers[sid]
 
-        _runtime_client = boto3.client(
-            "bedrock-agentcore",
-            region_name=REGION,
-            config=BotocoreConfig(read_timeout=300),
+
+def _get_analyzer(sid: str, aid: str) -> A2AAgent:
+    if sid not in _analyzers:
+        agent = A2AAgent(
+            endpoint=a2a_endpoint(ANALYZER_ARN, REGION),
+            client_config=make_a2a_config(aid, REGION),
+            name="analyzer",
+            description="Evaluates one decision option.",
         )
-        # Register a hook that fires before each request is signed.
-        # This injects X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id into
-        # every invoke_agent_runtime call so specialist containers see the same actor_id.
-        def _inject_actor_header(request, **kwargs):
-            request.headers["X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"] = _actor_id
+        agent._agent_card = build_agent_card(ANALYZER_ARN, "analyzer",
+            "Evaluates one decision option.", REGION)
+        _analyzers[sid] = agent
+    return _analyzers[sid]
 
-        _runtime_client.meta.events.register_first(
-            "before-sign.bedrock-agentcore.InvokeAgentRuntime",
-            _inject_actor_header,
+
+def _get_critic_refiner(sid: str, aid: str) -> A2AAgent:
+    if sid not in _critic_refs:
+        agent = A2AAgent(
+            endpoint=a2a_endpoint(CRITIC_REFINER_ARN, REGION),
+            client_config=make_a2a_config(aid, REGION),
+            name="critic_refiner",
+            description="Writer-Critic quality loop for decision memos.",
         )
-    return _runtime_client
+        agent._agent_card = build_agent_card(CRITIC_REFINER_ARN, "critic_refiner",
+            "Writer-Critic quality loop for decision memos.", REGION)
+        _critic_refs[sid] = agent
+    return _critic_refs[sid]
 
 
-# ── Specialist invocation helpers ─────────────────────────────────────────────
+def _call_a2a(agent: A2AAgent, prompt: str, timeout: int = 600) -> str:
+    """Call A2AAgent in an isolated thread with a fresh event loop.
 
-def _call_runtime(arn: str, session_id: str, prompt: str) -> str:
-    """Invoke a specialist AgentCore Runtime synchronously.
-
-    Uses the same runtimeSessionId so the specialist container is kept warm
-    for this session and the actor_id header flows to it.
+    Prevents 'Event loop is closed' errors that occur when A2AAgent's
+    run_async() conflicts with BedrockAgentCoreApp's worker event loop.
     """
-    client = _get_runtime_client()
-    resp = client.invoke_agent_runtime(
-        agentRuntimeArn=arn,
-        runtimeSessionId=session_id,       # routes to same specialist container
-        payload=json.dumps({"prompt": prompt}).encode(),
-        qualifier="DEFAULT",
-    )
-    raw = resp["response"].read()
-    try:
-        result = json.loads(raw)
-        return result.get("response", result) if isinstance(result, dict) else str(result)
-    except Exception:
-        return raw.decode()
+    from a2a_utils import extract_a2a_text
+    result_holder: list = [None, None]
+
+    def _run() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result_holder[0] = loop.run_until_complete(agent.invoke_async(prompt))
+        except Exception as exc:
+            result_holder[1] = exc
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+
+    if t.is_alive():
+        raise TimeoutError(f"A2A call timed out after {timeout}s")
+    if result_holder[1] is not None:
+        raise result_holder[1]
+    return extract_a2a_text(result_holder[0])
 
 
-async def _call_runtime_async(arn: str, session_id: str, prompt: str) -> str:
-    """Async wrapper — runs _call_runtime in a thread to avoid blocking the event loop."""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _call_runtime, arn, session_id, prompt)
-
-
-# ── Tool definitions (module-level, stable references for Strands) ─────────────
+# ── @tool definitions ──────────────────────────────────────────────────────────
 
 @tool
 def researcher_agent(topic: str) -> str:
     """Research market context, company data, benchmarks, and competitive intelligence.
-
+    Call this FIRST with the full decision brief.
     Args:
         topic: The decision topic to research.
     """
-    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
-    return _call_runtime(RESEARCHER_ARN, session_id, topic)
+    sid, aid = _current_session()
+    return _call_a2a(_get_researcher(sid, aid), topic)
 
 
 @tool
 def parallel_analyzers(brief: str, research_context: str) -> str:
-    """Run all three option analyzers (A, B, C) simultaneously.
-
-    Calls the Analyzer Runtime three times in parallel — one per pricing option.
-    Returns combined analyses. Use AFTER researcher_agent.
-
+    """Run all three option analyzers (A, B, C) simultaneously using the Analyzer Runtime.
+    Call this SECOND after researcher_agent.
     Args:
-        brief:            The original decision brief.
-        research_context: Research findings from researcher_agent.
+        brief: The original decision brief.
+        research_context: Findings from researcher_agent.
     """
-    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
-
-    async def _fork():
-        return await asyncio.gather(
-            _call_runtime_async(ANALYZER_ARN, session_id,
-                f"Option A ($19.99 invite-only)\nBrief: {brief}\nResearch: {research_context}"),
-            _call_runtime_async(ANALYZER_ARN, session_id,
-                f"Option B ($14.99 5% pilot)\nBrief: {brief}\nResearch: {research_context}"),
-            _call_runtime_async(ANALYZER_ARN, session_id,
-                f"Option C ($12.99 full launch)\nBrief: {brief}\nResearch: {research_context}"),
-        )
-
-    ra, rb, rc = asyncio.run(_fork())
+    prompts = [
+        f"Option A ($19.99 invite-only)\nBrief: {brief}\nResearch: {research_context}",
+        f"Option B ($14.99 5% pilot)\nBrief: {brief}\nResearch: {research_context}",
+        f"Option C ($12.99 full launch)\nBrief: {brief}\nResearch: {research_context}",
+    ]
+    # Run 3 concurrent A2A calls via ThreadPoolExecutor (each in its own event loop)
+    sid, aid = _current_session()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(_call_a2a, _get_analyzer(sid, aid), p) for p in prompts]
+        results = [f.result(timeout=600) for f in futures]
+    ra, rb, rc = results
     return f"OPTION A:\n{ra}\n\nOPTION B:\n{rb}\n\nOPTION C:\n{rc}"
 
 
 @tool
 def critic_refiner(brief: str, analyses: str) -> str:
-    """Draft and quality-check the memo through the Critic-Refiner Runtime.
-
-    Runs the Writer→Critic GraphBuilder loop. Returns the approved memo.
-    Use AFTER parallel_analyzers.
-
+    """Run the Writer-Critic quality loop via the Critic-Refiner Runtime.
+    Call this THIRD and LAST after parallel_analyzers.
     Args:
-        brief:    The original brief.
+        brief: The original decision brief.
         analyses: Combined analyses from parallel_analyzers.
     """
-    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
-    return _call_runtime(
-        CRITIC_REFINER_ARN, session_id,
+    sid, aid = _current_session()
+    return _call_a2a(
+        _get_critic_refiner(sid, aid),
         f"Brief:\n{brief}\n\nAnalyses:\n{analyses}",
     )
 
 
-# ── Orchestrator singleton ─────────────────────────────────────────────────────
-
-def _get_orchestrator() -> Agent:
-    """Lazily create the orchestrator Agent with the appropriate session manager.
-
-    On first call:
-    - actor_id is read from the custom header (via BedrockAgentCoreContext)
-    - session_id is read from context.session_id (= runtimeSessionId)
-    - AgentCoreMemorySessionManager or SlidingWindowConversationManager is configured
-    - Agent is created and cached
-
-    On subsequent calls in the same container: the cached Agent is returned.
-    Its conversation history accumulates naturally — multi-turn just works.
+def _get_orchestrator(sid: str, aid: str) -> Agent:
+    """Per-session Agent — isolated history and actor identity per session.
+    Prevents conversation history leaks across different users/sessions.
+    Uses AgentCoreMemorySessionManager if MEMORY_ID is set, else SlidingWindow.
     """
-    global _orchestrator
+    if sid not in _orchestrators:
+        if MEMORY_ID:
+            from bedrock_agentcore.memory.integrations.strands.config import (
+                AgentCoreMemoryConfig, RetrievalConfig,
+            )
+            from bedrock_agentcore.memory.integrations.strands.session_manager import (
+                AgentCoreMemorySessionManager,
+            )
+            memory_config = AgentCoreMemoryConfig(
+                memory_id=MEMORY_ID,
+                session_id=sid,
+                actor_id=aid,
+                retrieval_config={
+                    f"/facts/{aid}": RetrievalConfig(top_k=5, relevance_score=0.4),
+                },
+            )
+            session_mgr = AgentCoreMemorySessionManager(memory_config, REGION)
+            _orchestrators[sid] = Agent(
+                tools=[researcher_agent, parallel_analyzers, critic_refiner],
+                system_prompt=ORCHESTRATOR_PROMPT,
+                session_manager=session_mgr,
+                callback_handler=None,
+            )
+        else:
+            from strands.agent.conversation_manager import SlidingWindowConversationManager
+            _orchestrators[sid] = Agent(
+                tools=[researcher_agent, parallel_analyzers, critic_refiner],
+                system_prompt=ORCHESTRATOR_PROMPT,
+                conversation_manager=SlidingWindowConversationManager(window_size=20),
+                callback_handler=None,
+            )
+    return _orchestrators[sid]
 
-    if _orchestrator is not None:
-        return _orchestrator
-
-    # Capture identifiers from the current request — stable for container lifetime.
-    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
-    # actor_id may not be set yet if _get_runtime_client() hasn't run — read it now.
-    headers = BedrockAgentCoreContext.get_request_headers() or {}
-    actor_id = (
-        headers.get(ACTOR_HEADER)
-        or headers.get(ACTOR_HEADER.upper())
-        or "default-user"
-    )
-    logger.info("Initializing orchestrator: actor_id=%s session_id=%s memory_id=%s",
-                actor_id, session_id, MEMORY_ID)
-
-    if MEMORY_ID:
-        # ── AgentCore Memory (STM + LTM) ──────────────────────────────────────
-        # Conversation events are stored in short-term memory (STM) and
-        # periodically extracted into long-term memory (LTM) by the Memory service.
-        # Both the orchestrator and specialists use the same memory_id / actor_id /
-        # session_id so they share the same conversation namespace.
-        from bedrock_agentcore.memory.integrations.strands.config import (
-            AgentCoreMemoryConfig,
-            RetrievalConfig,
-        )
-        from bedrock_agentcore.memory.integrations.strands.session_manager import (
-            AgentCoreMemorySessionManager,
-        )
-
-        memory_config = AgentCoreMemoryConfig(
-            memory_id=MEMORY_ID,
-            session_id=session_id,
-            actor_id=actor_id,
-            # Retrieve facts about this actor from LTM before each user turn.
-            retrieval_config={
-                f"/facts/{actor_id}": RetrievalConfig(top_k=5, relevance_score=0.4),
-            },
-        )
-        session_mgr = AgentCoreMemorySessionManager(memory_config, REGION)
-        _orchestrator = Agent(
-            tools=[researcher_agent, parallel_analyzers, critic_refiner],
-            system_prompt=ORCHESTRATOR_PROMPT,
-            session_manager=session_mgr,
-            callback_handler=None,
-        )
-    else:
-        # ── In-container sliding window (no external persistence) ──────────────
-        # Keeps the last 20 turns in memory. History is lost when the container
-        # spins down (after the idle session timeout). Sufficient for demos.
-        from strands.agent.conversation_manager import SlidingWindowConversationManager
-
-        _orchestrator = Agent(
-            tools=[researcher_agent, parallel_analyzers, critic_refiner],
-            system_prompt=ORCHESTRATOR_PROMPT,
-            conversation_manager=SlidingWindowConversationManager(window_size=20),
-            callback_handler=None,
-        )
-
-    return _orchestrator
-
-
-# ── Entrypoint ─────────────────────────────────────────────────────────────────
 
 @app.entrypoint
 def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
-
-    # Ensure the runtime client is initialized (captures actor_id from headers).
-    _get_runtime_client()
-
-    # Get (or lazily create) the orchestrator and run the pipeline.
-    result = _get_orchestrator()(brief)
-    return str(result).strip()
+    sid, aid = _current_session()
+    return str(_get_orchestrator(sid, aid)(brief)).strip()
 
 
 if __name__ == "__main__":

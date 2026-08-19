@@ -29,7 +29,6 @@ import threading
 from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from strands import Agent, tool
 # A2AAgent imported lazily inside _get_researcher/_get_analyst/_get_synthesizer
 from strands.agent.conversation_manager import SlidingWindowConversationManager
@@ -44,8 +43,6 @@ RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
 ANALYST_ARN     = os.environ["ANALYST_RUNTIME_ARN"]
 SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
 
-ACTOR_HEADER = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
-
 ORCHESTRATOR_PROMPT = (
     "You are an orchestrator using the Agent-as-Tool pattern. "
     "Coordinate these three specialists in this order:\n"
@@ -56,21 +53,14 @@ ORCHESTRATOR_PROMPT = (
 )
 
 # ── Singletons — one per container lifetime ───────────────────────────────────
-_actor_id:    str       = None
-_researcher = None
-_analyst    = None
+_researcher  = None
+_analyst     = None
 _synthesizer = None
-_orchestrator: Agent    = None
 
-
-def _get_actor_id() -> str:
-    """Capture actor identity from the current request context (once per container)."""
-    global _actor_id
-    if _actor_id is None:
-        headers   = BedrockAgentCoreContext.get_request_headers() or {}
-        _actor_id = headers.get(ACTOR_HEADER) or "default-user"
-        logger.info("actor_id captured: %s", _actor_id)
-    return _actor_id
+# Per-session orchestrators keyed by session_id; each gets its own
+# SlidingWindowConversationManager so history never leaks across users.
+_session_agents: dict = {}
+_session_lock         = threading.Lock()
 
 
 def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
@@ -114,7 +104,7 @@ def _get_researcher():
         from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
         agent = A2AAgent(
             endpoint=a2a_endpoint(RESEARCHER_ARN, REGION),
-            client_config=make_a2a_config(_get_actor_id(), REGION),
+            client_config=make_a2a_config(region=REGION),
             name="researcher",
             description="Market research specialist.",
         )
@@ -132,7 +122,7 @@ def _get_analyst():
         from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
         agent = A2AAgent(
             endpoint=a2a_endpoint(ANALYST_ARN, REGION),
-            client_config=make_a2a_config(_get_actor_id(), REGION),
+            client_config=make_a2a_config(region=REGION),
             name="analyst",
             description="Business strategy analyst.",
         )
@@ -149,7 +139,7 @@ def _get_synthesizer():
         from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
         agent = A2AAgent(
             endpoint=a2a_endpoint(SYNTHESIZER_ARN, REGION),
-            client_config=make_a2a_config(_get_actor_id(), REGION),
+            client_config=make_a2a_config(region=REGION),
             name="synthesizer",
             description="Executive memo writer.",
         )
@@ -168,7 +158,7 @@ def researcher_agent(topic: str) -> str:
     Args:
         topic: The decision topic to research.
     """
-    from a2a_utils import extract_a2a_text
+    sid, _ = _current_session()
     return _call_a2a(_get_researcher(), topic)
 
 
@@ -180,7 +170,7 @@ def analyst_agent(brief: str, research_context: str) -> str:
         brief: The original decision brief.
         research_context: Findings from researcher_agent.
     """
-    from a2a_utils import extract_a2a_text
+    sid, _ = _current_session()
     return _call_a2a(_get_analyst(), f"Brief:\n{brief}\n\nResearch findings:\n{research_context}")
 
 
@@ -193,22 +183,21 @@ def synthesizer_agent(brief: str, research_context: str, analysis: str) -> str:
         research_context: Findings from researcher_agent.
         analysis: Analysis from analyst_agent.
     """
-    from a2a_utils import extract_a2a_text
+    sid, _ = _current_session()
     return _call_a2a(_get_synthesizer(), f"Brief:\n{brief}\n\nResearch:\n{research_context}\n\nAnalysis:\n{analysis}")
 
 
-def _get_orchestrator() -> Agent:
-    """Lazy singleton Agent — maintains conversation history for multi-turn."""
-    global _orchestrator
-    if _orchestrator is None:
-        _get_actor_id()  # ensure actor_id is captured before first A2A call
-        _orchestrator = Agent(
-            tools=[researcher_agent, analyst_agent, synthesizer_agent],
-            system_prompt=ORCHESTRATOR_PROMPT,
-            conversation_manager=SlidingWindowConversationManager(window_size=20),
-            callback_handler=None,
-        )
-    return _orchestrator
+def _get_session_agent(session_id: str) -> Agent:
+    """Return a per-session Agent with isolated conversation history."""
+    with _session_lock:
+        if session_id not in _session_agents:
+            _session_agents[session_id] = Agent(
+                tools=[researcher_agent, analyst_agent, synthesizer_agent],
+                system_prompt=ORCHESTRATOR_PROMPT,
+                conversation_manager=SlidingWindowConversationManager(window_size=20),
+                callback_handler=None,
+            )
+        return _session_agents[session_id]
 
 
 @app.entrypoint
@@ -216,8 +205,8 @@ def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
-    _get_actor_id()  # capture before first tool call
-    return str(_get_orchestrator()(brief)).strip()
+    session_id = (context.session_id if context and context.session_id else None) or "default-session"
+    return str(_get_session_agent(session_id)(brief)).strip()
 
 
 if __name__ == "__main__":

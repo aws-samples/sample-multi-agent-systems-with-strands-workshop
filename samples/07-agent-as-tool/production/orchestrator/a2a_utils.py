@@ -91,9 +91,17 @@ class AgentCoreA2AAuth(httpx.Auth):
             pass
 
         # --- Actor ID propagation ------------------------------------------
-        # Propagate the actor identity for specialists that use Memory.
-        if self.actor_id:
-            request.headers["X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"] = self.actor_id
+        # Read actor_id from the live request context so each outbound call
+        # carries the correct per-request identity. self.actor_id is a fallback
+        # for local testing only — never used in a live container invocation.
+        actor_id = self.actor_id
+        try:
+            headers_ctx = BedrockAgentCoreContext.get_request_headers() or {}
+            actor_id = headers_ctx.get(ACTOR_HEADER) or actor_id
+        except Exception:
+            pass
+        if actor_id:
+            request.headers["X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"] = actor_id
 
         yield request
 

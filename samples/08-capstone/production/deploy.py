@@ -125,7 +125,7 @@ def _deploy_specialist(session, bucket, account, name, folder):
     s3_key = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
     print(f"  [{name}] uploaded → s3://{bucket}/{s3_key}")
 
-    runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn)
+    runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn, protocol="A2A")
     print(f"  [{name}] creating {runtime_id} ...")
     runtime_arn = u.wait_ready(ctl, runtime_id)
     print(f"  [{name}] READY: {runtime_arn}")
