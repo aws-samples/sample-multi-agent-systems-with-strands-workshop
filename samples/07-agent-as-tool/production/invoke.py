@@ -20,5 +20,9 @@ response = client.invoke_agent_runtime(
     qualifier="DEFAULT",
 )
 
-result = json.loads(response["response"].read())
-print(result.get("response", result))
+raw = response["response"].read()
+try:
+    result = json.loads(raw)
+    print(result.get("response", result) if isinstance(result, dict) else result)
+except Exception:
+    print(raw.decode())
