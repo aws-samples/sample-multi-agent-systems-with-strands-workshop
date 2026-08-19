@@ -31,9 +31,11 @@ sessions/
 checkpoints/
 
 # AgentCore CLI scaffolding generated during deploy module (per-participant,
-# contains account IDs / deployed state - must never be committed)
+# contains account IDs, deployed ARNs and state - must never be committed)
 agentcore/
-app/MyAgent/
+app/
+.bedrock_agentcore.yaml
+.bedrock_agentcore/
 .python-version
 
 # Logs
