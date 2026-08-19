@@ -4,7 +4,7 @@ Shared utilities for boto3-based AgentCore Runtime deployment.
 Used by deploy.py and cleanup.py in multi-runtime modules (07, 08).
 API-verified: create_agent_runtime with codeConfiguration, PYTHON_3_13, PUBLIC network.
 """
-import io, json, os, subprocess, sys, tempfile, time, zipfile
+import io, json, os, subprocess, sys, tempfile, time, zipfile  # nosec B404 - subprocess used only for pip install with hardcoded args
 from pathlib import Path
 
 import boto3
@@ -64,7 +64,7 @@ def zip_folder(folder: Path) -> bytes:
         if req.exists():
             # Install Linux ARM64 compatible wheels — AgentCore codeConfiguration
             # runs on Linux ARM64 and does NOT install requirements at runtime.
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - args are hardcoded except req path which is an internal filesystem Path, not user input
                 [sys.executable, "-m", "pip", "install", "-r", str(req),
                  "-t", tmpdir,
                  "--platform", "manylinux2014_aarch64",
