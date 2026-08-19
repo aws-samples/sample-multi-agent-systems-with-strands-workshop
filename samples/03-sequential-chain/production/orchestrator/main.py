@@ -1,38 +1,79 @@
-"""M2 Sequential Chain: Orchestrator Runtime.
-Calls Researcher → Analyst → Synthesizer Runtimes in sequence.
-Each specialist Runtime is deployed separately and its ARN is injected via env vars.
-
-Environment variables required:
-  RESEARCHER_RUNTIME_ARN
-  ANALYST_RUNTIME_ARN
-  SYNTHESIZER_RUNTIME_ARN
 """
-import json, logging, os, uuid
-import boto3
+Sequential Chain Orchestrator — A2A Runtime (Pattern 1).
+
+Uses Strands GraphBuilder with A2AAgent nodes in fixed sequential order:
+  Researcher → Analyst → Synthesizer
+Each node's output is the next node's input.
+
+Strands GraphBuilder docs:
+  https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/
+AWS AgentCore A2A:
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
+
+Per-session isolation: orchestrator + A2AAgents keyed by session_id
+to prevent conversation history leaks across different users.
+"""
+import asyncio
+import logging
+import os
+import threading
+
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
+from strands.agent.a2a_agent import A2AAgent
+from strands.multiagent import GraphBuilder
+
+from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
 
 logger = logging.getLogger(__name__)
-app = BedrockAgentCoreApp()
+app    = BedrockAgentCoreApp()
 
-agentcore = boto3.client("bedrock-agentcore", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+REGION          = os.environ.get("AWS_REGION", "us-east-1")
+RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
+ANALYST_ARN     = os.environ["ANALYST_RUNTIME_ARN"]
+SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
 
-RESEARCHER_ARN   = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYST_ARN      = os.environ["ANALYST_RUNTIME_ARN"]
-SYNTHESIZER_ARN  = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+ACTOR_HEADER = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
 
-def call_runtime(arn: str, session_id: str, prompt: str) -> str:
-    """Invoke a specialist AgentCore Runtime and return its text response."""
-    resp = agentcore.invoke_agent_runtime(
-        agentRuntimeArn=arn,
-        runtimeSessionId=session_id,
-        payload=json.dumps({"prompt": prompt}).encode(),
-        qualifier="DEFAULT",
+# Per-session state — keyed by session_id
+_pipelines: dict[str, "GraphBuilder"] = {}
+
+
+def _current_session() -> tuple:
+    import uuid
+    headers    = BedrockAgentCoreContext.get_request_headers() or {}
+    actor_id   = headers.get(ACTOR_HEADER) or "default-user"
+    session_id = BedrockAgentCoreContext.get_session_id() or str(uuid.uuid4())
+    return session_id, actor_id
+
+
+def _make_a2a_agent(arn: str, name: str, description: str, actor_id: str) -> A2AAgent:
+    agent = A2AAgent(
+        endpoint=a2a_endpoint(arn, REGION),
+        client_config=make_a2a_config(actor_id, REGION),
+        name=name,
+        description=description,
     )
-    raw = resp["response"].read()
-    try:
-        return json.loads(raw)
-    except Exception:
-        return raw.decode()
+    agent._agent_card = build_agent_card(arn, name, description, REGION)
+    return agent
+
+
+def _get_pipeline(sid: str, aid: str) -> GraphBuilder:
+    """Build a GraphBuilder pipeline with A2AAgent nodes — one per session."""
+    if sid not in _pipelines:
+        researcher  = _make_a2a_agent(RESEARCHER_ARN,  "researcher",  "Market research specialist.", aid)
+        analyst     = _make_a2a_agent(ANALYST_ARN,     "analyst",     "Business strategy analyst.", aid)
+        synthesizer = _make_a2a_agent(SYNTHESIZER_ARN, "synthesizer", "Leadership memo writer.",    aid)
+
+        builder = GraphBuilder()
+        builder.add_node(researcher,  "researcher")
+        builder.add_node(analyst,     "analyst")
+        builder.add_node(synthesizer, "synthesizer")
+        builder.add_edge("researcher",  "analyst")
+        builder.add_edge("analyst",     "synthesizer")
+        builder.set_execution_timeout(600)
+        _pipelines[sid] = builder
+    return _pipelines[sid]
 
 
 @app.entrypoint
@@ -40,21 +81,16 @@ def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
-    session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(uuid.uuid4())
 
-    logger.info("session=%s | step=research", session_id)
-    research = call_runtime(RESEARCHER_ARN, session_id,
-                            f"Gather market data for this decision:\n{brief}")
+    sid, aid = _current_session()
+    pipeline  = _get_pipeline(sid, aid).build()
+    result    = pipeline(brief)
 
-    logger.info("session=%s | step=analyze", session_id)
-    analysis = call_runtime(ANALYST_ARN, session_id,
-                            f"Brief:\n{brief}\n\nResearch findings:\n{research}")
-
-    logger.info("session=%s | step=synthesize", session_id)
-    memo = call_runtime(SYNTHESIZER_ARN, session_id,
-                        f"Brief:\n{brief}\n\nResearch:\n{research}\n\nAnalysis:\n{analysis}")
-
-    return memo
+    # Extract synthesizer output from execution result
+    for node in reversed(result.execution_order):
+        if node.node_id == "synthesizer":
+            return str(node.result).strip()
+    return str(result).strip()
 
 
 if __name__ == "__main__":

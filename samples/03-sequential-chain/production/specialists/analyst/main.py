@@ -1,22 +1,17 @@
-"""Analyst specialist Runtime.
-Receives a decision brief + research context and returns structured analysis of all options.
-Deployed independently: called by the Orchestrator Runtime.
-"""
+"""Analyst specialist — A2A Runtime (Pattern 1: Sequential Chain)."""
 import logging
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore.runtime import serve_a2a
 from strands import Agent
+from strands.multiagent.a2a.executor import StrandsA2AExecutor
 
 logger = logging.getLogger(__name__)
-app = BedrockAgentCoreApp()
 
 SYSTEM_PROMPT = (
-    "You are a business strategy analyst. Evaluate each option (A, B, C) based on: "
-    "strengths, weaknesses, implementation complexity (Low/Med/High), "
-    "top 2 risks with mitigations, and a verdict. Return structured analysis."
+    "You are a business analyst. Evaluate each option (A/B/C): strengths, weaknesses, "
+    "complexity (Low/Med/High), top 2 risks+mitigations, verdict."
 )
 
 _agent = None
-
 
 def get_agent():
     global _agent
@@ -24,14 +19,5 @@ def get_agent():
         _agent = Agent(system_prompt=SYSTEM_PROMPT, callback_handler=None)
     return _agent
 
-
-@app.entrypoint
-def invoke(payload, context):
-    prompt = payload.get("prompt", payload) if isinstance(payload, dict) else payload
-    if not prompt:
-        raise ValueError("Missing required field: prompt")
-    return str(get_agent()(prompt)).strip()
-
-
 if __name__ == "__main__":
-    app.run()
+    serve_a2a(StrandsA2AExecutor(get_agent()))

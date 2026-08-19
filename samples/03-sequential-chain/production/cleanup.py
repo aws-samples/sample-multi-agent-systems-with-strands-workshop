@@ -74,3 +74,44 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ── Multi-runtime cleanup (4-runtime A2A deployment) ──────────────────────────
+# These names are created by the new deploy.py (A2A multi-runtime architecture).
+# Run: python cleanup.py --name-prefix m3  (same command, extended to handle both)
+# The block below runs after the single-runtime cleanup above.
+def _cleanup_multi_runtime(prefix, ctl, iam, s3, bucket, dry_run=False):
+    """Delete the 4-runtime A2A deployment created by the new deploy.py."""
+    import sys
+    from pathlib import Path
+    SHARED = Path(__file__).parent.parent.parent / "shared"
+    sys.path.insert(0, str(SHARED))
+    import deploy_utils as u
+
+    runtime_names = [
+        f"{prefix}_researcher",
+        f"{prefix}_analyst",
+        f"{prefix}_synthesizer",
+        f"{prefix}_orchestrator",
+    ]
+    role_names = [f"agentcore-{n.replace('_', '-')}-role" for n in runtime_names[:-1]]
+    role_names.append(f"agentcore-{prefix}-orchestrator-role")
+
+    if dry_run:
+        for n in runtime_names:
+            print(f"  [dry-run] would delete runtime: {n}")
+        return
+
+    existing = u.list_all_runtimes(ctl)
+    for name in runtime_names:
+        if name in existing:
+            print(f"  Deleting {name}...")
+            u.delete_runtime(ctl, existing[name])
+            print(f"  Deleted: {name}")
+
+    for role in role_names:
+        u.delete_role(iam, role)
+
+    for name in runtime_names:
+        u.delete_s3_prefix(s3, bucket, f"m3-sequential-chain/{name}/")
+    print("  S3 objects deleted.")

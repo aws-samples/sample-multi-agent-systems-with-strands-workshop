@@ -1,26 +1,17 @@
-"""Synthesizer specialist Runtime.
-Receives brief + all analyses and writes the executive leadership memo.
-Deployed independently: called last by the Orchestrator Runtime.
-"""
+"""Synthesizer specialist — A2A Runtime (Pattern 1: Sequential Chain)."""
 import logging
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore.runtime import serve_a2a
 from strands import Agent
+from strands.multiagent.a2a.executor import StrandsA2AExecutor
 
 logger = logging.getLogger(__name__)
-app = BedrockAgentCoreApp()
 
 SYSTEM_PROMPT = (
-    "You are an executive communications specialist. Write a leadership memo:\n"
-    "## Recommendation (one sentence: which option and why)\n"
-    "## Options at a Glance (table comparing A, B, C)\n"
-    "## Top 3 Risks with specific mitigations\n"
-    "## Success Metrics (at least 2 KPIs with numeric targets)\n"
-    "## Decision Required (owner, deadline, who approves)\n"
-    "Under 400 words."
+    "Write a leadership memo: Recommendation, Options table A/B/C, "
+    "Top 3 Risks, Success Metrics, Decision Required. Under 400 words."
 )
 
 _agent = None
-
 
 def get_agent():
     global _agent
@@ -28,14 +19,5 @@ def get_agent():
         _agent = Agent(system_prompt=SYSTEM_PROMPT, callback_handler=None)
     return _agent
 
-
-@app.entrypoint
-def invoke(payload, context):
-    prompt = payload.get("prompt", payload) if isinstance(payload, dict) else payload
-    if not prompt:
-        raise ValueError("Missing required field: prompt")
-    return str(get_agent()(prompt)).strip()
-
-
 if __name__ == "__main__":
-    app.run()
+    serve_a2a(StrandsA2AExecutor(get_agent()))
