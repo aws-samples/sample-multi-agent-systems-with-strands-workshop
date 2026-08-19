@@ -41,7 +41,7 @@ def invoke(payload, context):
         raise ValueError("Missing required field: prompt")
 
     # OTEL session propagation
-    _session_id = (payload.get("session_id") if isinstance(payload, dict) else None) or str(_uuid.uuid4())
+    _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _token = _ctx.attach(_baggage.set_baggage("session.id", _session_id))
     logger.info("session.id=%s module=m3-parallel-fork-join", _session_id)
 

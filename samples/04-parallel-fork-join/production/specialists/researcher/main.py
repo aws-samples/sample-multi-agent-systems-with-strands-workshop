@@ -15,18 +15,26 @@ SYSTEM_PROMPT = (
     "industry benchmarks, and competitor intelligence. Return structured findings: data only."
 )
 
+_agent = None
+
+
+def get_agent():
+    global _agent
+    if _agent is None:
+        _agent = Agent(
+            tools=[get_company_data, get_market_benchmarks, get_competitor_data],
+            system_prompt=SYSTEM_PROMPT,
+            callback_handler=None,
+        )
+    return _agent
+
 
 @app.entrypoint
 def invoke(payload, context):
     topic = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not topic:
         raise ValueError("Missing required field: prompt")
-    agent = Agent(
-    tools=[get_company_data, get_market_benchmarks, get_competitor_data],
-        system_prompt=SYSTEM_PROMPT,
-        callback_handler=None,
-    )
-    return str(agent(topic)).strip()
+    return str(get_agent()(topic)).strip()
 
 
 if __name__ == "__main__":

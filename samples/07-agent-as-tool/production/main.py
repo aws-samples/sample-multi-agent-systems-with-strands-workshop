@@ -80,7 +80,7 @@ def invoke(payload, context):
     # ── OTEL: propagate session ID across all spans ──────────────────
     import uuid as _uuid
     from opentelemetry import baggage as _baggage, context as _ctx
-    _session_id = (payload.get("session_id") if isinstance(payload, dict) else None) or str(_uuid.uuid4())
+    _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
     logger.info("session.id=%s module=m6-agent-as-tool", _session_id)

@@ -15,14 +15,22 @@ SYSTEM_PROMPT = (
     "top 2 risks with mitigations, and a verdict. Return structured analysis."
 )
 
+_agent = None
+
+
+def get_agent():
+    global _agent
+    if _agent is None:
+        _agent = Agent(system_prompt=SYSTEM_PROMPT, callback_handler=None)
+    return _agent
+
 
 @app.entrypoint
 def invoke(payload, context):
     prompt = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not prompt:
         raise ValueError("Missing required field: prompt")
-    agent = Agent(system_prompt=SYSTEM_PROMPT, callback_handler=None)
-    return str(agent(prompt)).strip()
+    return str(get_agent()(prompt)).strip()
 
 
 if __name__ == "__main__":

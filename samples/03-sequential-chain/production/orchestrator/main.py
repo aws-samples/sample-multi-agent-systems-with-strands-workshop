@@ -25,7 +25,7 @@ def call_runtime(arn: str, session_id: str, prompt: str) -> str:
     resp = agentcore.invoke_agent_runtime(
         agentRuntimeArn=arn,
         runtimeSessionId=session_id,
-        payload=json.dumps({"prompt": prompt, "session_id": session_id}).encode(),
+        payload=json.dumps({"prompt": prompt}).encode(),
         qualifier="DEFAULT",
     )
     raw = resp["response"].read()
@@ -40,7 +40,7 @@ def invoke(payload, context):
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
-    session_id = payload.get("session_id", str(uuid.uuid4())) if isinstance(payload, dict) else str(uuid.uuid4())
+    session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(uuid.uuid4())
 
     logger.info("session=%s | step=research", session_id)
     research = call_runtime(RESEARCHER_ARN, session_id,
