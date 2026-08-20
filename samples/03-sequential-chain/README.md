@@ -2,64 +2,71 @@
 
 **Pattern 1.** Break the single-agent ceiling with a 3-stage pipeline where each agent has one focused job and passes its output to the next.
 
+**Strands primitive:** `GraphBuilder` (Workflow / DAG)
+
 ## Architecture
 
 ![Sequential Chain: Decision Brief → Researcher → Analyst → Synthesizer → Leadership Memo](./architecture.png)
 
-
 ## What you'll build
 
-A 3-stage pipeline: Researcher → Analyst → Synthesizer. Each agent has a narrow system prompt and a small context window: only what it needs for its role.
+A 3-stage pipeline — Researcher → Analyst → Synthesizer — defined as a directed graph.
+Each node's output is automatically passed as input to the next node by the graph engine.
+Each agent has a narrow system prompt and sees only what it needs for its role.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `module-03.ipynb` | Step-by-step notebook: prompts → pipeline → inspect → metrics |
+| `module-03.ipynb` | Step-by-step notebook: prompts → GraphBuilder → run → inspect |
 | `chat.py` | Run the pipeline interactively from the terminal |
 | `requirements.txt` | `strands-agents>=1.52.0` |
+| `production/` | Deploy specialists to AgentCore Runtime; coordinate via `chain.py` |
 
 ## Key concepts
 
-- Sequential pipeline: output of one agent is the input of the next
-- `callback_handler=None`: silent intermediate agents; only the final one streams
-- Each agent has a **small, focused context**: no single agent holds everything
-- `str(result)`: convert `AgentResult` to string for chaining
+- **GraphBuilder**: Strands primitive for deterministic sequential workflows (Workflow / DAG)
+- **`add_node` / `add_edge`**: declare the graph structure; the engine enforces execution order
+- **Output propagation**: each node's output is automatically passed as input to connected nodes
+- **`callback_handler=None`**: silent intermediate agents; display the final result explicitly
+- **Focused context**: no single agent holds everything — each sees only its stage's inputs
 
-## Strands Agents SDK
-
-Sequential agent pipelines are implemented with the [Strands Agents SDK](https://strandsagents.com/docs/).
-In Strands, a sequential workflow chains agents in Python: each agent's output becomes the next agent's input.
-See the [Workflow documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/workflow/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+## Strands GraphBuilder
 
 ```python
 from strands import Agent
+from strands.multiagent import GraphBuilder
 
-researcher  = Agent(system_prompt=..., callback_handler=None)
-analyst     = Agent(system_prompt=..., callback_handler=None)
-synthesizer = Agent(system_prompt=...)
+researcher  = Agent(system_prompt=RESEARCHER_PROMPT,  callback_handler=None)
+analyst     = Agent(system_prompt=ANALYST_PROMPT,     callback_handler=None)
+synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
 
-research = researcher(f"Gather data for: {brief}")
-analysis = analyst(f"Brief:
-{brief}
+builder = GraphBuilder()
+builder.add_node(researcher,  "researcher")
+builder.add_node(analyst,     "analyst")
+builder.add_node(synthesizer, "synthesizer")
+builder.add_edge("researcher", "analyst")
+builder.add_edge("analyst",    "synthesizer")
 
-Research:
-{research}")
-memo     = synthesizer(f"Brief:
-{brief}
+result = builder.build()(brief)
 
-Analysis:
-{analysis}")
+# Extract the final node's output
+for node in reversed(result.execution_order):
+    if node.node_id == "synthesizer":
+        print(str(node.result))
+        break
 ```
 
+See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/).
+
 **Pricing:**
-- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el): inference costs per token
-- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el): Runtime invocation costs
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)
 
 ## Prerequisites
 
 - Python 3.10 or higher
-- Module 2: this module imports tools from `../02-single-agent/decision_brief_tools.py`.
+- Module 2: this module imports tools from `../02-single-agent/decision_brief_tools.py`
 
 ## Run
 

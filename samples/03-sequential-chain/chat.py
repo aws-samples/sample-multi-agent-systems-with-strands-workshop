@@ -1,11 +1,14 @@
-"""Interactive chat for Module 2: Sequential Chain.
+"""Interactive chat for Module 3: Sequential Chain.
 
-Runs the 3-stage sequential pipeline in a loop so you can submit
-different decision briefs and compare outputs.
+Uses Strands GraphBuilder (Workflow / DAG) to run the 3-stage pipeline:
+  Researcher → Analyst → Synthesizer
 
-    cd samples/02-sequential-chain
-    pip install -r requirements.txt
-    python chat.py
+Each node's output becomes the next node's input — the chain.
+The GraphBuilder is the Strands primitive for deterministic sequential workflows.
+
+    cd samples/03-sequential-chain
+    uv pip install -r requirements.txt
+    uv run python chat.py
 
 Type 'quit' or Ctrl+C to stop.
 
@@ -22,6 +25,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent
+from strands.multiagent import GraphBuilder
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 RESEARCHER_PROMPT = '''You are a market research specialist.
@@ -55,34 +59,32 @@ Under 400 words. Be direct.'''
 
 
 def run_chain(brief: str) -> str:
-    """Run the 3-stage sequential chain on a decision brief."""
+    """Run the sequential chain via Strands GraphBuilder."""
     researcher = Agent(
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         system_prompt=RESEARCHER_PROMPT,
         callback_handler=None,
     )
-    analyst = Agent(system_prompt=ANALYST_PROMPT, callback_handler=None)
-    synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT)
+    analyst     = Agent(system_prompt=ANALYST_PROMPT,     callback_handler=None)
+    synthesizer = Agent(system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
 
-    print("\nStep 1/3: Researcher gathering data...")
-    research = researcher(f"Gather market data for this decision:\n{brief}")
+    builder = GraphBuilder()
+    builder.add_node(researcher,  "researcher")
+    builder.add_node(analyst,     "analyst")
+    builder.add_node(synthesizer, "synthesizer")
+    builder.add_edge("researcher", "analyst")
+    builder.add_edge("analyst",    "synthesizer")
 
-    print("Step 2/3: Analyst evaluating options...")
-    analysis = analyst(
-        f"Original brief:\n{brief}\n\nResearch findings:\n{research}"
-    )
+    result = builder.build()(brief)
 
-    print("Step 3/3: Synthesizer writing memo...\n")
-    memo = synthesizer(
-        f"Original brief:\n{brief}\n\n"
-        f"Research:\n{research}\n\n"
-        f"Analysis:\n{analysis}"
-    )
-    return str(memo)
+    for node in reversed(result.execution_order):
+        if node.node_id == "synthesizer":
+            return str(node.result).strip()
+    return str(result).strip()
 
 
 def main():
-    print("Sequential Chain: Decision Intelligence Pipeline")
+    print("Sequential Chain — Strands GraphBuilder (Workflow / DAG)")
     print("Submit a decision brief. Type 'quit' to exit.\n")
     print("Default brief: NovaCart Premium Tier. Press Enter to use it.\n")
 
@@ -104,7 +106,7 @@ Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
             break
 
         brief = user_input if user_input else DEFAULT_BRIEF
-        run_chain(brief)
+        print(run_chain(brief))
         print("\n" + "─" * 60 + "\n")
 
 
