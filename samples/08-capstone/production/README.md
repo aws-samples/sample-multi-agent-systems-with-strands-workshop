@@ -8,14 +8,13 @@ Deploy the Capstone pattern to Amazon Bedrock AgentCore: 4 Runtimes + AgentCore 
 
 ---
 
-## Why deploy.py is required (not the CLI)
+## Why deploy.py is required
 
-The `agentcore configure` CLI configures a **single runtime** per project. This module deploys **4 runtimes + 1 Memory resource** where:
+This module deploys **4 runtimes + 1 Memory resource** with dependencies:
 
 - 3 specialist runtimes must be deployed first
 - The Orchestrator needs the specialist ARNs as env vars at startup
 - The Orchestrator needs the Memory ID as an env var at startup
-- The CLI cannot coordinate this sequence or inject env vars automatically
 
 `deploy.py` handles all of this with one command.
 
@@ -88,24 +87,18 @@ The Orchestrator reads both from the request context and propagates them to all 
 
 ## Deploy
 
-Run these commands from the `production/` folder.
+Run from the `production/` folder.
 
 ```bash
-# Navigate to this folder
 cd samples/08-capstone/production
 
-# Configure the agent for deployment
-agentcore configure -e main.py
-# When prompted for a name, enter one <= 23 characters, e.g.: capstone
-
-# Deploy (packages code to S3, provisions Runtime via CloudFormation: ~3-5 min)
-agentcore deploy
-
-# Invoke from terminal (pass the Runtime ARN printed by deploy)
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT_ID:agentRuntime/RUNTIME_ID
+python deploy.py                       # default prefix m8
+python deploy.py --name-prefix m8demo  # custom prefix (max 8 chars)
+python deploy.py --skip-memory         # deploy without AgentCore Memory
+python deploy.py --dry-run             # preview without creating
 ```
 
-When the deploy finishes, the output includes the **Runtime ARN**. Copy it and pass it to `invoke.py`.
+The deploy output prints the **Orchestrator ARN** and **Memory ID**. Use them with `chat.py` or `invoke.py`.
 
 ## Multi-turn chat
 

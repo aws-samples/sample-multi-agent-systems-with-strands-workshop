@@ -1,119 +1,120 @@
-# M7: Agent-as-Tool: Production Runtime
+# Pattern 5: Agent-as-Tool - Production Deployment
 
-![Agent-as-Tool Runtime on Amazon Bedrock AgentCore: Client invokes the Runtime which runs the LLM orchestrator delegating to @tool specialist agents](./architecture.png)
+![Agent-as-Tool Runtime architecture](./architecture.png)
 
-Deploy this module as an Amazon Bedrock AgentCore Runtime.
+Deploy Pattern 5 to Amazon Bedrock AgentCore: 4 Runtimes where the LLM orchestrator treats each specialist as a `@tool` function.
+
+**Pattern:** LLM orchestrator (HTTP) delegates to three A2A specialists by calling them as tools. The LLM decides routing order; Python code does not hardcode the sequence.
+
+**Strands primitive:** `A2AAgent` wrapped as `@tool` inside `Agent(tools=[...])`
+
+---
+
+## Architecture
+
+```
+User
+ |
+ v  sessionId = runtimeSessionId (routes to same container)
+ |
+Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
+ |  Agent(tools=[researcher_agent, analyst_agent, synthesizer_agent])
+ |  LLM decides when and in what order to call each tool
+  |
+  ├── @tool researcher_agent ──A2A──► Researcher Runtime  (port 9000)
+  ├── @tool analyst_agent    ──A2A──► Analyst Runtime     (port 9000)
+  └── @tool synthesizer_agent ─A2A──► Synthesizer Runtime (port 9000)
+```
+
+**Specialists** run on port 9000 using the [A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html) (`serve_a2a`).
+**Orchestrator** receives calls via `invoke_agent_runtime` (HTTP), then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
+
+Per-session isolation: orchestrator agents keyed by `session_id` so different users never share conversation history.
+
+---
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `main.py` | AgentCore entry point: `@app.entrypoint` wrapping the pattern |
-| `mock_tools.py` | Self-contained business intelligence tools (no external deps) |
-| `requirements.txt` | Runtime dependencies including OTEL instrumentation |
-
-## Deploy
-
-Run these commands from the `production/` folder.
-
-```bash
-# Navigate to this folder
-cd samples/07-agent-as-tool/production
-
-# Configure the agent for deployment
-agentcore configure -e main.py
-# When prompted for a name, enter one <= 23 characters, e.g.: agenttool
-
-# Deploy (packages code to S3, provisions Runtime via CloudFormation: ~3-5 min)
-agentcore deploy
-
-# Invoke from terminal (pass the Runtime ARN printed by deploy)
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT_ID:agentRuntime/RUNTIME_ID
-```
-
-When the deploy finishes, the output includes the **Runtime ARN**. Copy it and pass it to `invoke.py`.
-
-## Test
-
-```bash
-# CLI
-agentcore invoke "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
-
-# With session ID (for multi-turn context, must be 33+ chars):
-agentcore invoke --session-id decision-memo-session-000001-abc "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV."
-```
-
-```python
-# boto3: production invocation pattern
-import json, uuid, boto3
-
-from botocore.config import Config
-client = boto3.client("bedrock-agentcore", region_name="us-east-1",
-    config=Config(read_timeout=300))  # pipelines can take 60-180s
-response = client.invoke_agent_runtime(
-    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT>:runtime/<ARN-suffix>",
-    runtimeSessionId=str(uuid.uuid4()),   # 33+ chars; uuid4 satisfies this
-    payload=json.dumps({
-        "prompt": "NovaCart Premium Tier: Options A ($19.99), B ($14.99), C ($12.99). Target +15% CLV.",
-        "session_id": str(uuid.uuid4()),  # used by OTEL to group spans
-    }).encode(),
-    qualifier="DEFAULT",
-)
-result = json.loads(response["response"].read())
-print(result)
-```
-
-## Observability
-
-### Enable CloudWatch Transaction Search (one-time per account)
-
-```python
-import boto3
-logs = boto3.client("logs", region_name="us-east-1")
-xray = boto3.client("xray", region_name="us-east-1")
-
-# Enable OTEL trace indexing
-xray.update_trace_segment_destination(destination="CloudWatchLogs")
-logs.create_log_group(logGroupName="aws/spans")
-```
-
-### Add OTEL to uv dependencies (already in requirements.txt)
-
-`aws-opentelemetry-distro` is included. When `agentcore deploy` builds the container,
-it installs OTEL automatically. No extra config needed.
-
-### What you'll see in CloudWatch
-
-Navigate to **CloudWatch → X-Ray → Traces** or **GenAI Observability**:
-
-- **Per-invocation trace**: one root span per `invoke_agent_runtime` call
-- **Per-agent spans**: each `Agent()` call creates a child span tagged with `session.id`
-- **Tool call spans**: each tool call (researcher, analyzer, etc.) is a nested span
-- **Duration breakdown**: see exactly where time is spent across the pipeline
-
-Session ID is propagated via OTEL baggage so all spans from the same invocation
-are grouped together, even across nested agent calls.
-
-### Check traces
-
-```bash
-# View recent invocations
-agentcore status
-
-# CloudWatch Logs Insights query for your Runtime
-aws logs start-query \
-  --log-group-name /aws/bedrock-agentcore/agenttool \
-  --start-time $(date -d '1 hour ago' +%s) \
-  --end-time $(date +%s) \
-  --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 20'
-```
-
+| `deploy.py` | Deploy 4 runtimes (3 A2A specialists + 1 HTTP orchestrator) |
+| `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
+| `chat.py` | Interactive multi-turn chat in the terminal |
+| `invoke.py` | Single invocation |
+| `orchestrator/main.py` | Orchestrator: `Agent(tools=[a2a_agents])` with retry on cold start |
+| `orchestrator/a2a_utils.py` | SigV4 auth, A2A endpoint construction, retry transport |
+| `specialists/researcher/main.py` | Researcher A2A specialist |
+| `specialists/analyst/main.py` | Analyst A2A specialist |
+| `specialists/synthesizer/main.py` | Synthesizer A2A specialist |
 
 ---
 
-## Sample brief to test the pipeline
+## Deploy
 
-Use this brief to test the full Agent-as-Tool pipeline (Researcher → Analyst → Synthesizer):
+Run from the `production/` folder.
+
+```bash
+cd samples/07-agent-as-tool/production
+
+python deploy.py                      # default prefix m7
+python deploy.py --name-prefix m7ws   # custom prefix (max 8 chars)
+python deploy.py --dry-run            # preview without creating
+```
+
+What gets created:
+
+| Resource | Name pattern |
+|----------|-------------|
+| S3 bucket | `bedrock-agentcore-deploy-<account>-<region>` |
+| IAM runtime role | `workshop-agentcore-m7-runtime-role` |
+| IAM orchestrator role | `workshop-agentcore-m7-orchestrator-role` |
+| Runtimes | `m7_researcher`, `m7_analyst`, `m7_synthesizer` (A2A) + `m7_orchestrator` (HTTP) |
+
+Deployment takes 3–5 minutes. The deploy output prints the orchestrator ARN.
+
+---
+
+## Invoke
+
+Single invocation:
+
+```bash
+python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
+```
+
+Or use the RUNTIME_ARN from the notebook:
+
+```python
+import boto3, json, uuid, os
+from botocore.config import Config
+
+client = boto3.client(
+    "bedrock-agentcore",
+    region_name=os.environ.get("AWS_REGION", "us-east-1"),
+    config=Config(read_timeout=300),
+)
+response = client.invoke_agent_runtime(
+    agentRuntimeArn=RUNTIME_ARN,
+    runtimeSessionId=str(uuid.uuid4()),
+    payload=json.dumps({"prompt": "NovaCart: Options A ($19.99), B ($14.99), C ($12.99). Best CLV strategy?"}).encode(),
+    qualifier="DEFAULT",
+)
+print(json.loads(response["response"].read()))
+```
+
+---
+
+## Multi-turn chat
+
+```bash
+python chat.py \
+  --actor-id user-123 \
+  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
+```
+
+---
+
+## Sample brief
 
 ```
 We are considering launching a Premium Subscription Tier for NovaCart's
@@ -128,44 +129,37 @@ timing? Stakeholders include VP of Product, Finance Lead, and Operations.
 Options: (A) Launch pilot in Q3 with top 2 SKUs, (B) Delay until full product
 catalog analysis is complete, (C) Launch a limited free-tier first to gauge
 interest. The decision is needed within 2 weeks.
+NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot),
+C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 
-Run with `chat.py` for interactive multi-turn:
+First call: 3-5 minutes (cold start across 4 runtimes). Subsequent calls in the same session are faster (containers warm, conversation history preserved in `SlidingWindowConversationManager`).
 
-```bash
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn <ORCHESTRATOR_ARN>
-```
-
-Then paste the brief at the `You:` prompt.
-
-**Note on timing:** The first call takes 3-5 minutes. Cold start loads A2A dependencies
-and the chain calls 3 specialist runtimes. Subsequent turns in the same session are faster
-(container warm, agent history preserved via SlidingWindowConversationManager).
+---
 
 ## Cleanup
 
-**Two steps: both required:**
-
 ```bash
-# Step 1: Reset local config (does NOT touch AWS)
-agentcore remove all -y
-
-# Step 2: Apply teardown. Removes the Runtime and ECR image from AWS.
-agentcore deploy
+python cleanup.py --name-prefix m7          # delete all runtimes, roles, S3
+python cleanup.py --name-prefix m7 --dry-run  # preview what gets deleted
 ```
 
-> `agentcore remove all -y` only resets the local `agentcore/agentcore.json`.
-> The follow-up `agentcore deploy` is what actually deletes the CloudFormation stack
-> and the AgentCore Runtime endpoint from your account.
+---
 
-To verify cleanup is complete:
+## Observability
 
-```bash
-# Check no Runtimes remain
-aws bedrock-agentcore list-agent-runtimes --region us-east-1
+AgentCore sends all telemetry to **Amazon CloudWatch**:
 
-# Verify Runtime is gone
-aws bedrock-agentcore list-agent-runtimes --region us-east-1
-```
+- **Logs:** `/aws/bedrock-agentcore/runtimes/<id>-DEFAULT` (one log group per runtime)
+- **Traces:** CloudWatch Transaction Search (enable under X-Ray settings → GenAI Observability)
+
+Each invocation produces nested spans: one root per `invoke_agent_runtime`, child spans per `Agent()` call, tool-call spans for each `@tool` function, and A2A call spans per specialist.
+
+---
+
+## References
+
+- [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
+- [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
+- [Strands Agent-as-Tool](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool)
+- [Strands A2AAgent API](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md)
