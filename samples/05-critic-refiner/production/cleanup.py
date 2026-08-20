@@ -32,13 +32,11 @@ def main():
     prefix = args.name_prefix[:8]
 
     runtime_names = [
-        f"{prefix}_researcher",
-        f"{prefix}_critic_refiner",
-        f"{prefix}_orchestrator",
+        f"{prefix}_writer",
+        f"{prefix}_critic",
     ]
     role_names = [
         f"workshop-agentcore-{prefix}-runtime-role",
-        f"workshop-agentcore-{prefix}-orchestrator-role",
     ]
 
     if args.dry_run:
