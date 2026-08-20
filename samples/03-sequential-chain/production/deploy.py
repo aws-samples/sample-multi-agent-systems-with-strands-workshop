@@ -62,7 +62,7 @@ def main():
 
     if args.dry_run:
         for n, proto in [(f"{prefix}_researcher","A2A"),(f"{prefix}_analyst","A2A"),
-                         (f"{prefix}_synthesizer","A2A"),(f"{prefix}_orchestrator","HTTP")]:
+                         (f"{prefix}_synthesizer","A2A")]:
             print(f"  would create: {n:<25} protocol={proto}")
         return
 

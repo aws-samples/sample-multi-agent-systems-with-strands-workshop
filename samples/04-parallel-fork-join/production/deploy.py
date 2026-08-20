@@ -1,14 +1,22 @@
 """
-Deploy Module 4: parallel-fork-join — 4 AgentCore Runtimes with A2A.
-Specialists: A2A protocol (port 9000). Orchestrator: HTTP (port 8080).
+Deploy Module 4: Parallel Fork-Join — 3 A2A specialist runtimes.
 
-IAM roles (created once per prefix, reused by all specialists):
-  workshop-workshop-agentcore-{prefix}-runtime-role      — A2A specialists
-  workshop-agentcore-{prefix}-orchestrator-role — HTTP orchestrator (+ InvokeAgentRuntime)
+Architecture:
+  researcher  ──┐
+  analyzer    ──┤  A2A specialists (port 9000, serve_a2a)
+  synthesizer ──┘
 
-Override with env vars to skip role creation (workshop environments):
+No orchestrator runtime is deployed. The fork-join coordination is handled
+locally by chain.py using Strands GraphBuilder with A2AAgent nodes.
+
+Strands GraphBuilder: https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/
+AWS AgentCore A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
+
+IAM role (created once per prefix, reused by all specialists):
+  workshop-agentcore-{prefix}-runtime-role  — A2A specialists (Bedrock, Logs, S3)
+
+Override with env var to skip role creation (workshop environments):
   AGENTCORE_RUNTIME_ROLE_ARN
-  AGENTCORE_ORCHESTRATOR_ROLE_ARN
 
 Usage: python deploy.py [--name-prefix m4] [--dry-run]
 """
@@ -46,12 +54,11 @@ def main():
     args   = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    m4_names = {s: f"{prefix}_{s}" for s in ['researcher', 'analyzer', 'synthesizer']}
-    orch_name  = f"{prefix}_orchestrator"
+    specialist_names = {s: f"{prefix}_{s}" for s in ['researcher', 'analyzer', 'synthesizer']}
 
     if args.dry_run:
-        for n in list(m4_names.values()) + [orch_name]:
-            print(f"  would create: {n:<25} protocol={'HTTP' if n == orch_name else 'A2A'}")
+        for n in specialist_names.values():
+            print(f"  would create: {n:<25} protocol=A2A")
         return
 
     session = u.get_session()
@@ -64,12 +71,12 @@ def main():
     print(f"Code bucket: s3://{bucket}\n")
 
     specialist_defs = [
-        (m4_names["researcher"],  HERE / "specialists/researcher"),
-        (m4_names["analyzer"],    HERE / "specialists/analyzer"),
-        (m4_names["synthesizer"], HERE / "specialists/synthesizer"),
+        (specialist_names["researcher"],  HERE / "specialists/researcher"),
+        (specialist_names["analyzer"],    HERE / "specialists/analyzer"),
+        (specialist_names["synthesizer"], HERE / "specialists/synthesizer"),
     ]
 
-    print("=== Step 1: Deploy A2A specialists in parallel ===")
+    print("=== Deploy A2A specialists in parallel ===")
     arns: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=3) as pool:
         futures = {pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
@@ -78,27 +85,21 @@ def main():
             name, _, arn = future.result()
             arns[name] = arn
 
-    print("\n=== Step 2: Deploy HTTP orchestrator ===")
-    orch_role = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-orchestrator-role",
-                                       account, REGION, bucket, can_invoke_runtimes=True)
-    orch_zip  = u.zip_folder(HERE / "orchestrator")
-    orch_key  = u.upload_code(s3c, bucket, MODULE, orch_name, orch_zip)
-    print(f"  [{orch_name}] uploaded")
-    orch_id, _ = u.create_runtime(ctl, orch_name, bucket, orch_key, orch_role, env_vars={
-        "RESEARCHER_RUNTIME_ARN":  arns[m4_names["researcher"]],
-        "ANALYZER_RUNTIME_ARN":    arns[m4_names["analyzer"]],
-        "SYNTHESIZER_RUNTIME_ARN": arns[m4_names["synthesizer"]],
-    })
-    print(f"  [{orch_name}] creating HTTP runtime...")
-    orch_arn = u.wait_ready(ctl, orch_id)
-    print(f"  [{orch_name}] READY: {orch_arn}")
-
     print(f"\n=== Deployment complete ===")
-    print(f"Orchestrator ARN: {orch_arn}")
-    with open(".runtime_arn", "w", encoding="utf-8") as _f:
-        _f.write(orch_arn)
-    print(f"Invoke:  python invoke.py {orch_arn}")
-    print(f"Chat:    python chat.py --actor-id <id> --runtime-arn {orch_arn}")
+    print(f"Researcher ARN:  {arns[specialist_names['researcher']]}")
+    print(f"Analyzer ARN:    {arns[specialist_names['analyzer']]}")
+    print(f"Synthesizer ARN: {arns[specialist_names['synthesizer']]}")
+
+    env_block = (
+        f"\nexport RESEARCHER_RUNTIME_ARN={arns[specialist_names['researcher']]}\n"
+        f"export ANALYZER_RUNTIME_ARN={arns[specialist_names['analyzer']]}\n"
+        f"export SYNTHESIZER_RUNTIME_ARN={arns[specialist_names['synthesizer']]}\n"
+    )
+    with open(".env_arns", "w", encoding="utf-8") as _f:
+        _f.write(env_block)
+
+    print(f"\nRun the chain:")
+    print(f"  source .env_arns && python chain.py")
     print(f"Cleanup: python cleanup.py --name-prefix {prefix}")
 
 
