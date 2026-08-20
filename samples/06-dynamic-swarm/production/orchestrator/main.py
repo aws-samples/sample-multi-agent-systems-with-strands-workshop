@@ -1,19 +1,18 @@
 """
 Dynamic Swarm Orchestrator (Pattern 4) — production implementation.
 
-The Strands Swarm class (strands.multiagent.Swarm) implements autonomous agent
-handoffs via a `handoff_to_agent` tool injected into each agent's tool_registry.
-This requires agents to be local objects in the same process.
-
-In production with separate AgentCore Runtimes, each specialist runs in its own
-container and communicates via the A2A protocol (port 9000, JSON-RPC 2.0).
-A2AAgent wraps the remote endpoint as a client and does not expose tool_registry,
+The Strands Swarm class requires local agent objects sharing tool_registry.
+In production with separate AgentCore Runtimes, each specialist runs in its
+own container and communicates via A2A — A2AAgent does not expose tool_registry,
 so it cannot be used directly with the Swarm class.
 
 This implementation achieves equivalent autonomous-routing semantics using
-Agent(tools=[researcher_agent, analyst_agent, writer_agent]) where each @tool
-wraps an A2AAgent call. The orchestrator LLM decides which specialist to call
-and in what order, producing the same emergent routing as a Swarm.
+Agent(tools=[monitor_tool, network_specialist_tool, db_admin_tool, resolver_tool])
+where each @tool wraps an A2A call. The orchestrator LLM decides which specialist
+to call and in what order, producing the same emergent routing as a Swarm.
+
+Agents: Monitor, Network Specialist, DB Admin, Resolver
+Use case: IT incident response — path emerges based on findings.
 
 References:
   Strands Swarm: https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/
@@ -29,22 +28,27 @@ from strands.agent.conversation_manager import SlidingWindowConversationManager
 logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
-REGION         = os.environ.get("AWS_REGION", "us-east-1")
-RESEARCHER_ARN = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYST_ARN    = os.environ["ANALYST_RUNTIME_ARN"]
-WRITER_ARN     = os.environ["WRITER_RUNTIME_ARN"]
-ACTOR_HEADER   = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
+REGION               = os.environ.get("AWS_REGION", "us-east-1")
+MONITOR_ARN          = os.environ["MONITOR_RUNTIME_ARN"]
+NETWORK_SPECIALIST_ARN = os.environ["NETWORK_SPECIALIST_RUNTIME_ARN"]
+DB_ADMIN_ARN         = os.environ["DB_ADMIN_RUNTIME_ARN"]
+RESOLVER_ARN         = os.environ["RESOLVER_RUNTIME_ARN"]
+ACTOR_HEADER         = "x-amzn-bedrock-agentcore-runtime-custom-actor-id"
 
 ORCHESTRATOR_PROMPT = (
-    "You coordinate a Dynamic Swarm. Agents hand off autonomously based on context.\n"
-    "Typically: researcher_agent first for market data, then analyst_agent for evaluation, "
-    "then writer_agent for the final memo. Adapt routing based on what each agent returns."
+    "You coordinate a Dynamic Swarm for IT incident response. "
+    "Route autonomously based on what each specialist reports:\n"
+    "1. Always call monitor_agent first to triage the incident.\n"
+    "2. Based on monitor findings, call network_specialist_agent, db_admin_agent, or both.\n"
+    "3. After all relevant specialists have reported, call resolver_agent to produce the resolution plan.\n"
+    "Adapt routing based on what each agent returns."
 )
 
-_researchers:   dict = {}
-_analysts:      dict = {}
-_writers:       dict = {}
-_orchestrators: dict = {}
+_monitors:            dict = {}
+_network_specialists: dict = {}
+_db_admins:           dict = {}
+_resolvers:           dict = {}
+_orchestrators:       dict = {}
 
 
 def _current_session() -> tuple:
@@ -54,7 +58,7 @@ def _current_session() -> tuple:
             headers.get(ACTOR_HEADER) or "default-user")
 
 
-def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
+def _call_a2a(agent, prompt: str, timeout: int = 300) -> str:
     from a2a_utils import extract_a2a_text
     result_holder: list = [None, None]
     def _run():
@@ -88,38 +92,49 @@ def _get_a2a(cache, arn, name, desc, aid):
 
 
 @tool
-def researcher_agent(topic: str) -> str:
-    """Research market context, data, benchmarks, competitor intelligence. Call first.
-    Args: topic: the decision topic."""
+def monitor_agent(incident_report: str) -> str:
+    """Entry point for all incidents. Triages, assesses impact, classifies the incident type.
+    Always call this first.
+    Args: incident_report: the full incident description."""
     sid, aid = _current_session()
-    return _call_a2a(_get_a2a(_researchers, RESEARCHER_ARN, "researcher",
-                               "Market research specialist.", aid), topic)
+    return _call_a2a(_get_a2a(_monitors, MONITOR_ARN, "monitor",
+                               "Entry point — triages and classifies incidents.", aid),
+                     incident_report)
 
 
 @tool
-def analyst_agent(brief: str, research_context: str) -> str:
-    """Analyze options A/B/C using research findings.
-    Args: brief: decision brief. research_context: from researcher_agent."""
+def network_specialist_agent(incident_context: str) -> str:
+    """Investigates network and infrastructure root causes (load balancer, CDN, DNS, connectivity).
+    Call when monitor suspects network/infra involvement.
+    Args: incident_context: incident report plus monitor findings."""
     sid, aid = _current_session()
-    return _call_a2a(_get_a2a(_analysts, ANALYST_ARN, "analyst",
-                               "Business strategy analyst.", aid),
-                     f"Brief:\n{brief}\n\nResearch:\n{research_context}")
+    return _call_a2a(_get_a2a(_network_specialists, NETWORK_SPECIALIST_ARN, "network_specialist",
+                               "Network/infra root cause analysis.", aid), incident_context)
 
 
 @tool
-def writer_agent(brief: str, analyses: str) -> str:
-    """Write the final leadership memo.
-    Args: brief: decision brief. analyses: from analyst_agent."""
+def db_admin_agent(incident_context: str) -> str:
+    """Investigates database root causes (connection pool, slow queries, locks, schema changes).
+    Call when DB metrics are abnormal.
+    Args: incident_context: incident report plus prior findings."""
     sid, aid = _current_session()
-    return _call_a2a(_get_a2a(_writers, WRITER_ARN, "writer",
-                               "Executive memo writer.", aid),
-                     f"Brief:\n{brief}\n\nAnalyses:\n{analyses}")
+    return _call_a2a(_get_a2a(_db_admins, DB_ADMIN_ARN, "db_admin",
+                               "Database root cause analysis.", aid), incident_context)
+
+
+@tool
+def resolver_agent(all_findings: str) -> str:
+    """Synthesizes all specialist findings into a resolution plan. Call this last.
+    Args: all_findings: combined findings from all specialists."""
+    sid, aid = _current_session()
+    return _call_a2a(_get_a2a(_resolvers, RESOLVER_ARN, "resolver",
+                               "Incident resolver — produces resolution plan.", aid), all_findings)
 
 
 def _get_orchestrator(sid: str) -> Agent:
     if sid not in _orchestrators:
         _orchestrators[sid] = Agent(
-            tools=[researcher_agent, analyst_agent, writer_agent],
+            tools=[monitor_agent, network_specialist_agent, db_admin_agent, resolver_agent],
             system_prompt=ORCHESTRATOR_PROMPT,
             conversation_manager=SlidingWindowConversationManager(window_size=20),
             callback_handler=None,
@@ -130,20 +145,20 @@ def _get_orchestrator(sid: str) -> Agent:
 @app.entrypoint
 def invoke(payload, context):
     import time
-    brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
-    if not brief:
+    incident = payload.get("prompt", payload) if isinstance(payload, dict) else payload
+    if not incident:
         raise ValueError("Missing required field: prompt")
     sid, _ = _current_session()
     last_error = None
     for attempt in range(3):
         try:
-            result_str = str(_get_orchestrator(sid)(brief)).strip()
+            result_str = str(_get_orchestrator(sid)(incident)).strip()
             if "Agent execution failed" in result_str:
                 raise RuntimeError(f"Agent failed (cold start?): {result_str[:200]}")
             return result_str
         except Exception as exc:
             last_error = exc
-            _orchestrators.pop(sid, None)  # clear stale cache
+            _orchestrators.pop(sid, None)
             logger.warning("Attempt %d failed: %s — retrying in %ds", attempt+1, exc, 10*(attempt+1))
             if attempt < 2:
                 time.sleep(10 * (attempt + 1))
