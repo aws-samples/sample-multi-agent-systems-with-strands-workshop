@@ -233,7 +233,7 @@ def main():
     if memory_id:
         print(f"Memory ID:        {memory_id}")
     print(f"Orchestrator ARN: {orch_arn}")
-    with open(".runtime_arn", "w") as _f:
+    with open(".runtime_arn", "w", encoding="utf-8") as _f:
         _f.write(orch_arn)
     print()
     print("Specialist ARNs:")

@@ -87,7 +87,7 @@ class AgentCoreA2AAuth(httpx.Auth):
             sid = BedrockAgentCoreContext.get_session_id()
             if sid:
                 request.headers[SESSION_HEADER] = sid
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # --- Actor ID propagation ------------------------------------------
@@ -98,7 +98,7 @@ class AgentCoreA2AAuth(httpx.Auth):
         try:
             headers_ctx = BedrockAgentCoreContext.get_request_headers() or {}
             actor_id = headers_ctx.get(ACTOR_HEADER) or actor_id
-        except Exception:
+        except Exception:  # nosec B110
             pass
         if actor_id:
             request.headers["X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"] = actor_id
@@ -133,7 +133,7 @@ def extract_a2a_text(result) -> str:
         content = result.message.get("content", [])
         if content and isinstance(content[0], dict):
             return content[0].get("text", str(result))
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return str(result)
 
