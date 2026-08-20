@@ -52,7 +52,7 @@ never share conversation history.
 |------|---------|
 | `deploy.py` | Deploy 3 runtimes (specialists A2A + orchestrator HTTP) |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
-| `chat.py` | Interactive multi-turn chat (passes actorId + sessionId) |
+| `../chat.py` | Interactive multi-turn chat — run from the module root folder, not here |
 | `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
 | `orchestrator/main.py` | Orchestrator Runtime code |
 | `specialists/researcher/main.py`, `critic_refiner/` | A2A specialist runtimes |
