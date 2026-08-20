@@ -1,37 +1,49 @@
-"""Interactive chat for Module 7: Decision-Memo Capstone.
+"""Interactive chat for Module 8: Decision-Memo System (Capstone).
 
-Runs the full 4-pattern pipeline:
-  P1 Sequential: Researcher gathers data
-  P2 Fork-Join:  3 analyzers run in parallel
-  P3 Critic-Refiner: Writer + Critic quality loop
-  P5 Agent-as-Tool: Orchestrator coordinates all three
+Combines all four multi-agent patterns:
+  P2 Parallel heads: Planner + Researcher + Analyzers run simultaneously
+  P3 Critic-Refiner: Program Revisor ↔ Critic quality loop
+  P5 Agent-as-Tool:  Orchestrator delegates to both tools
+  P1 Sequential:     Program Revisor synthesizes after parallel heads
 
-    cd samples/07-capstone
+    cd samples/08-capstone
     pip install -r requirements.txt
     python chat.py
 
 Type 'quit' or Ctrl+C to stop.
-
-Model options (pass model= to each Agent to switch):
-    from strands.models import BedrockModel
-    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0")  # default
-    model = BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0")
-    model = BedrockModel(model_id="amazon.nova-pro-v1:0")   # AWS credits
 """
 
-import sys, os, time, asyncio
+import sys, os, asyncio, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
+
+import nest_asyncio
+nest_asyncio.apply()
 
 from strands import Agent, tool
 from strands.multiagent import GraphBuilder
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
-RESEARCHER_PROMPT = "You are a market research specialist. Use tools to gather data. Return structured findings."
-ANALYZER_PROMPT = "Evaluate ONE option: strengths, weaknesses, complexity (Low/Med/High), top 2 risks+mitigations, verdict. 100 words max."
-WRITER_PROMPT = (
-    "Write a leadership memo with: ## Recommendation, ## Options at a Glance (table A/B/C), "
-    "## Top 3 Risks+mitigations, ## Success Metrics (numeric targets), ## Decision Required. "
-    "If given feedback, revise."
+PLANNER_PROMPT = (
+    "You are a decision planner. Analyze the brief and produce a structured analysis plan: "
+    "key questions to answer, what data is needed, what criteria matter for choosing between options. "
+    "100 words max."
+)
+RESEARCHER_PROMPT = (
+    "You are a market research specialist. Use tools to gather data. "
+    "Return structured findings: data only, no recommendations."
+)
+ANALYZER_PROMPT = (
+    "Evaluate ONE option: strengths, weaknesses, complexity (Low/Med/High), "
+    "top 2 risks with mitigations, verdict. 100 words max."
+)
+PROGRAM_REVISOR_PROMPT = (
+    "You are an executive memo writer. Synthesize plan and analyses into a COMPLETE leadership memo:\n"
+    "## Recommendation (one sentence: which option and why)\n"
+    "## Options at a Glance (table comparing A, B, C)\n"
+    "## Top 3 Risks with specific mitigations\n"
+    "## Success Metrics (at least 2 KPIs with numeric targets)\n"
+    "## Decision Required (owner, deadline, who approves)\n"
+    "Revise if given feedback. Under 400 words."
 )
 CRITIC_PROMPT = (
     "Check: 1)Recommendation. 2)Options table A/B/C. 3)3 Risks+mitigations. "
@@ -39,81 +51,84 @@ CRITIC_PROMPT = (
     "Respond: APPROVED or REVISION NEEDED: [criteria numbers]"
 )
 ORCHESTRATOR_PROMPT = (
-    "Coordinate the Decision Intelligence pipeline:\n"
-    "1. Call researcher_agent.\n"
-    "2. Call parallel_analyzers with brief and research.\n"
-    "3. Call critic_refiner with brief and analyses.\n"
-    "Execute all three steps."
+    "Decision-Memo System: "
+    "1. Call parallel_heads with the brief. "
+    "2. Call program_revisor with the brief and parallel_findings. "
+    "Execute both steps in order."
 )
 
 
 @tool
-def researcher_agent(topic: str) -> str:
-    """Research market context, company data, benchmarks, and competitor intelligence.
+def parallel_heads(brief: str) -> str:
+    """Run Planner, Researcher, Analyzer A, Analyzer B, Analyzer C simultaneously on the brief.
+
     Args:
-        topic: The decision topic to research
+        brief: The full decision brief
     """
-    worker = Agent(
+    planner    = Agent(system_prompt=PLANNER_PROMPT, callback_handler=None)
+    researcher = Agent(
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
-        system_prompt=RESEARCHER_PROMPT, callback_handler=None)
-    return str(worker(topic))
-
-
-@tool
-def parallel_analyzers(brief: str, research_context: str) -> str:
-    """Run all three option analyzers (A, B, C) simultaneously and return combined analyses.
-    Args:
-        brief: The original decision brief
-        research_context: Research findings from researcher_agent
-    """
-    a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+        system_prompt=RESEARCHER_PROMPT, callback_handler=None,
+    )
+    analyzer_a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+    analyzer_b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+    analyzer_c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
 
     async def fork():
         return await asyncio.gather(
-            a.invoke_async(f"Option A ($19.99 invite-only)\nBrief: {brief}\nResearch: {research_context}"),
-            b.invoke_async(f"Option B ($14.99 5% pilot)\nBrief: {brief}\nResearch: {research_context}"),
-            c.invoke_async(f"Option C ($12.99 full launch)\nBrief: {brief}\nResearch: {research_context}"),
+            planner.invoke_async(brief),
+            researcher.invoke_async(brief),
+            analyzer_a.invoke_async(f"Option A: Exclusive Premium ($19.99/mo, invite-only top 10%)\nBrief: {brief}"),
+            analyzer_b.invoke_async(f"Option B: Gradual Rollout ($14.99/mo, 5% A/B pilot)\nBrief: {brief}"),
+            analyzer_c.invoke_async(f"Option C: Full Launch ($12.99/mo, open to all, 30-day trial)\nBrief: {brief}"),
         )
 
-    ra, rb, rc = asyncio.run(fork())
-    return f"OPTION A:\n{ra}\n\nOPTION B:\n{rb}\n\nOPTION C:\n{rc}"
+    plan_out, research_out, a_out, b_out, c_out = asyncio.run(fork())
+    return (
+        f"PLAN:\n{plan_out}\n\n"
+        f"RESEARCH:\n{research_out}\n\n"
+        f"OPTION A:\n{a_out}\n\n"
+        f"OPTION B:\n{b_out}\n\n"
+        f"OPTION C:\n{c_out}"
+    )
 
 
 @tool
-def critic_refiner(brief: str, analyses: str) -> str:
-    """Draft and quality-check the memo through a critic loop. Returns the approved memo.
+def program_revisor(brief: str, parallel_findings: str) -> str:
+    """Synthesize parallel findings into an approved leadership memo via Program Revisor ↔ Critic loop.
+
     Args:
         brief: The original decision brief
-        analyses: Combined analyses from parallel_analyzers
+        parallel_findings: Combined output from parallel_heads
     """
-    writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
-    critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
+    revisor = Agent(name="program_revisor", system_prompt=PROGRAM_REVISOR_PROMPT, callback_handler=None)
+    critic  = Agent(name="critic",          system_prompt=CRITIC_PROMPT,          callback_handler=None)
 
     def needs_revision(state):
         r = state.results.get("critic")
         return bool(r) and "revision needed" in str(r.result).lower()
 
     builder = GraphBuilder()
-    builder.add_node(writer, "writer")
-    builder.add_node(critic, "critic")
-    builder.set_entry_point("writer")
-    builder.add_edge("writer", "critic")
-    builder.add_edge("critic", "writer", condition=needs_revision)
+    builder.add_node(revisor, "program_revisor")
+    builder.add_node(critic,  "critic")
+    builder.set_entry_point("program_revisor")
+    builder.add_edge("program_revisor", "critic")
+    builder.add_edge("critic", "program_revisor", condition=needs_revision)
     builder.set_max_node_executions(6)
-    builder.set_execution_timeout(120)
+    builder.set_execution_timeout(180)
     builder.reset_on_revisit(True)
 
-    result = builder.build()(f"Brief:\n{brief}\n\nAnalyses:\n{analyses}")
+    result = builder.build()(
+        f"Brief:\n{brief}\n\nParallel findings:\n{parallel_findings}"
+    )
     for node in reversed(result.execution_order):
-        if node.node_id == "writer":
+        if node.node_id == "program_revisor":
             return str(node.result)
     return str(result)
 
 
 def main():
-    print("Decision-Memo Capstone Pipeline | type 'quit' to exit\n")
+    print("Decision-Memo System | type 'quit' to exit\n")
     DEFAULT_BRIEF = """
 DECISION BRIEF: NovaCart Premium Tier Launch
 Options: A (Exclusive $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
@@ -131,18 +146,17 @@ Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
 
         brief = user_input if user_input else DEFAULT_BRIEF
         orchestrator = Agent(
-            tools=[researcher_agent, parallel_analyzers, critic_refiner],
+            tools=[parallel_heads, program_revisor],
             system_prompt=ORCHESTRATOR_PROMPT,
         )
-        print("\nRunning full pipeline (P1→P2→P3 via P5 orchestrator)...")
+        print("\nRunning Decision-Memo System (P2 → P3 via P5)...")
         t0 = time.time()
         orchestrator(brief)
         elapsed = time.time() - t0
 
         calls = sum(1 for msg in orchestrator.messages
                     for b in msg.get("content", []) if "toolUse" in b)
-        summary = orchestrator.messages  # already streamed
-        print(f"\n⏱️  {elapsed:.1f}s | 🔧 {calls} pipeline stages")
+        print(f"\n{elapsed:.1f}s | {calls} pipeline stages")
         print()
 
 
