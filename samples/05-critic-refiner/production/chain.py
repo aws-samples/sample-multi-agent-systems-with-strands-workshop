@@ -1,34 +1,36 @@
 """
 Critic-Refiner coordinator — Pattern 3 demo.
 
-Calls the remote Critic-Refiner specialist via A2A.
-The specialist runs the Writer↔Critic GraphBuilder loop internally
-and returns the approved memo.
+Manages the Generator↔Critic loop using two separate A2A specialist runtimes:
 
-This is intentionally simple Python code, not a deployed runtime.
+  Writer Runtime  →  produces or revises the memo
+  Critic Runtime  →  evaluates it: APPROVED or REVISION NEEDED: ...
 
-> NOTE — production alternatives for this coordination layer:
->   - AWS Lambda      : stateless, event-driven, no servers to manage
->   - AWS Step Functions : durable execution with timeout handling
->   The specialist AgentCore Runtime (A2A protocol) stays unchanged in both cases.
+The loop runs until the Critic says APPROVED or max_cycles is reached.
+Context is passed explicitly in each A2A call — no shared in-process memory needed.
 
 Required env vars (set by deploy.py or manually):
-  CRITIC_REFINER_RUNTIME_ARN
+  WRITER_RUNTIME_ARN
+  CRITIC_RUNTIME_ARN
   AWS_REGION (optional, defaults to us-east-1)
 
 Usage:
   python chain.py                   # uses default demo brief
   python chain.py "your brief here"
 """
+import asyncio
 import os
 import sys
+import threading
 
 from strands.agent.a2a_agent import A2AAgent
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
 
-REGION             = os.environ.get("AWS_REGION", "us-east-1")
-CRITIC_REFINER_ARN = os.environ["CRITIC_REFINER_RUNTIME_ARN"]
+REGION          = os.environ.get("AWS_REGION", "us-east-1")
+WRITER_ARN      = os.environ["WRITER_RUNTIME_ARN"]
+CRITIC_ARN      = os.environ["CRITIC_RUNTIME_ARN"]
+MAX_CYCLES      = 4
 
 DEFAULT_BRIEF = (
     "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "
@@ -37,27 +39,26 @@ DEFAULT_BRIEF = (
 )
 
 
-def run_chain(brief: str) -> str:
-    """Send brief to the Critic-Refiner specialist and return the approved memo."""
-    import asyncio, threading
-
+def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
     agent = A2AAgent(
-        endpoint=a2a_endpoint(CRITIC_REFINER_ARN, REGION),
+        endpoint=a2a_endpoint(arn, REGION),
         client_config=make_a2a_config(region=REGION),
-        name="critic_refiner",
-        description="Writer-Critic quality loop.",
+        name=name,
+        description=description,
     )
-    agent._agent_card = build_agent_card(
-        CRITIC_REFINER_ARN, "critic_refiner", "Writer-Critic quality loop.", REGION
-    )
+    agent._agent_card = build_agent_card(arn, name, description, REGION)
+    return agent
 
+
+def _call(agent: A2AAgent, prompt: str, timeout: int = 300) -> str:
+    """Call an A2A agent in an isolated thread with a fresh event loop."""
     result_holder: list = [None, None]
 
     def _run():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            result_holder[0] = loop.run_until_complete(agent.invoke_async(brief))
+            result_holder[0] = loop.run_until_complete(agent.invoke_async(prompt))
         except Exception as exc:
             result_holder[1] = exc
         finally:
@@ -65,15 +66,44 @@ def run_chain(brief: str) -> str:
 
     t = threading.Thread(target=_run, daemon=True)
     t.start()
-    t.join(timeout=600)
+    t.join(timeout=timeout)
     if t.is_alive():
-        raise TimeoutError("Critic-Refiner call timed out after 600s")
+        raise TimeoutError(f"A2A call timed out after {timeout}s")
     if result_holder[1] is not None:
         raise result_holder[1]
     return extract_a2a_text(result_holder[0])
 
 
+def run_chain(brief: str) -> str:
+    """Run the Generator↔Critic loop until APPROVED or MAX_CYCLES."""
+    writer = _make_agent(WRITER_ARN, "writer", "Produces and revises the executive memo.")
+    critic = _make_agent(CRITIC_ARN, "critic", "Evaluates the memo: APPROVED or REVISION NEEDED.")
+
+    # Step 1: Writer produces the first draft
+    draft = _call(writer, brief)
+
+    for cycle in range(1, MAX_CYCLES + 1):
+        # Step 2: Critic evaluates
+        verdict = _call(critic, draft)
+        print(f"  Cycle {cycle} — Critic: {verdict[:80].strip()}")
+
+        if verdict.strip().upper().startswith("APPROVED"):
+            return draft
+
+        # Step 3: Writer revises — passes brief + previous draft + feedback explicitly
+        revision_prompt = (
+            f"Original brief:\n{brief}\n\n"
+            f"Previous draft:\n{draft}\n\n"
+            f"Revision required:\n{verdict}"
+        )
+        draft = _call(writer, revision_prompt)
+
+    return draft  # return last draft if max cycles reached
+
+
 if __name__ == "__main__":
     brief = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BRIEF
-    print(f"\nRunning Critic-Refiner...\n{'─' * 60}")
-    print(run_chain(brief))
+    print(f"\nRunning Critic-Refiner (2 separate runtimes)...\n{'─' * 60}")
+    result = run_chain(brief)
+    print(f"\n{'─' * 60}")
+    print(result)
