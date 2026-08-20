@@ -8,18 +8,6 @@ Deploy the Capstone pattern to Amazon Bedrock AgentCore: 4 Runtimes + AgentCore 
 
 ---
 
-## Why deploy.py is required
-
-This module deploys **4 runtimes + 1 Memory resource** with dependencies:
-
-- 3 specialist runtimes must be deployed first
-- The Orchestrator needs the specialist ARNs as env vars at startup
-- The Orchestrator needs the Memory ID as an env var at startup
-
-`deploy.py` handles all of this with one command.
-
----
-
 ## Contents
 
 - [Files](#files)
