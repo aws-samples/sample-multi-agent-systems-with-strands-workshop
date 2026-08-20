@@ -271,8 +271,19 @@ def create_runtime(
             existing = list_all_runtimes(ctl_client)
             runtime_id = existing.get(name)
             if runtime_id:
-                info = ctl_client.get_agent_runtime(agentRuntimeId=runtime_id)
-                return runtime_id, info["agentRuntimeArn"]
+                # Runtime exists — update it with the new code artifact
+                update_kwargs = {
+                    "agentRuntimeId": runtime_id,
+                    "agentRuntimeArtifact": kwargs["agentRuntimeArtifact"],
+                    "roleArn": kwargs["roleArn"],
+                    "networkConfiguration": kwargs["networkConfiguration"],
+                }
+                if env_vars:
+                    update_kwargs["environmentVariables"] = env_vars
+                if protocol != "HTTP":
+                    update_kwargs["protocolConfiguration"] = kwargs["protocolConfiguration"]
+                ctl_client.update_agent_runtime(**update_kwargs)
+                return runtime_id, ctl_client.get_agent_runtime(agentRuntimeId=runtime_id)["agentRuntimeArn"]
         raise
 
 
