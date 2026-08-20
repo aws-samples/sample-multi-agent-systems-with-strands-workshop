@@ -6,7 +6,13 @@
 
 ## Architecture
 
-![Critic-Refiner: Writer drafts → Critic evaluates → APPROVED (exit) or REVISION NEEDED (cycle back)](./architecture.png)
+### Local (notebook / chat.py)
+
+![Critic-Refiner: Decision Brief → Writer → Critic → APPROVED or REVISION NEEDED cycle](./architecture.png)
+
+### Production (AgentCore Runtimes)
+
+![Production: chain.py calls Writer Runtime and Critic Runtime separately](./production/architecture.png)
 
 ## What you'll build
 
@@ -89,17 +95,9 @@ python chat.py
 
 ## Production
 
-Two separate A2A runtimes — `chain.py` manages the loop by passing context explicitly:
+Two separate A2A runtimes — `chain.py` manages the loop by passing context explicitly.
 
-```
-chain.py (local)
-  │
-  ├──A2A──► Writer Runtime   ← produces / revises the memo
-  │              ↑
-  │         brief + draft + REVISION NEEDED feedback
-  │              │
-  └──A2A──► Critic Runtime   ← APPROVED or REVISION NEEDED: ...
-```
+![Production architecture: Writer Runtime ↔ Critic Runtime](./production/architecture.png)
 
 See [`production/README.md`](./production/README.md) for deploy instructions.
 
