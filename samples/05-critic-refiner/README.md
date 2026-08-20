@@ -1,73 +1,107 @@
-# Module 5: Critic-Refiner
+# Module 5: Critic-Refiner (Reflection)
 
-**Pattern 3.** Add a quality gate: the Writer drafts the memo, the Critic evaluates it against a checklist, and if the bar is not met the memo cycles back for revision until approved.
+**Pattern 3.** Add a quality gate: the Writer drafts a memo, the Critic evaluates it, and if the bar is not met the memo cycles back for revision — until `APPROVED`.
+
+**Strands primitive:** `GraphBuilder` + cycle edge with `condition=`
 
 ## Architecture
 
-![Critic-Refiner: Writer → Critic → APPROVED (exit) or REVISION NEEDED (cycle back to Writer)](./architecture.png)
-
+![Critic-Refiner: Writer drafts → Critic evaluates → APPROVED (exit) or REVISION NEEDED (cycle back)](./architecture.png)
 
 ## What you'll build
 
-A `GraphBuilder` feedback loop: Writer → Critic → [APPROVED: done | REVISION NEEDED: cycle back to Writer].
+A `GraphBuilder` feedback loop with two agents:
+
+- **Writer** — produces or revises the leadership memo
+- **Critic** — evaluates it against 5 criteria; outputs `APPROVED` or `REVISION NEEDED: ...`
+
+The cycle edge `add_edge("critic", "writer", condition=needs_revision)` routes failed evaluations back to the Writer automatically.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `module-05.ipynb` | Step-by-step notebook: research → Writer → Critic → graph loop → metrics |
-| `chat.py` | Run the critic-refiner pipeline interactively |
+| `module-05.ipynb` | Step-by-step notebook: Writer + Critic agents → GraphBuilder cycle → run → inspect |
+| `chat.py` | Run the critic-refiner interactively from the terminal |
 | `requirements.txt` | `strands-agents>=1.52.0` |
+| `production/` | Deploy Writer + Critic as separate A2A runtimes |
 
 ## Key concepts
 
-- `GraphBuilder`: builds a directed graph of agents with conditional edges
-- Cycle edge: `add_edge("critic", "writer", condition=needs_revision)` creates the feedback loop
-- `set_entry_point("writer")`: required when a cycle makes the start node ambiguous
+- `GraphBuilder` + cycle edge: `add_edge("critic", "writer", condition=needs_revision)`
+- `set_entry_point("writer")`: required when a cycle creates start-node ambiguity
 - `set_max_node_executions(N)`: safety limit to prevent infinite loops
-- `reset_on_revisit(True)`: resets node state on each revisit
+- `reset_on_revisit(True)`: clears node state on each revisit (fresh context per revision)
+- Critic output format: must start with `APPROVED` or `REVISION NEEDED:` — condition functions parse this signal
 
-## Strands Agents SDK
-
-The Critic-Refiner pattern uses [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`: a deterministic directed graph with optional cycle edges.
-Condition functions on edges control routing: `add_edge("critic", "writer", condition=needs_revision)` creates the feedback loop.
-See the [Graph documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+## Strands GraphBuilder
 
 ```python
+from strands import Agent
 from strands.multiagent import GraphBuilder
+
+writer = Agent(system_prompt=WRITER_PROMPT, callback_handler=None)
+critic = Agent(system_prompt=CRITIC_PROMPT, callback_handler=None)
+
+def needs_revision(state):
+    r = state.results.get("critic")
+    return bool(r) and "revision needed" in str(r.result).lower()
 
 builder = GraphBuilder()
 builder.add_node(writer, "writer")
 builder.add_node(critic, "critic")
-builder.set_entry_point("writer")          # required when a cycle creates ambiguity
+builder.set_entry_point("writer")                              # required: cycle creates ambiguity
 builder.add_edge("writer", "critic")
-builder.add_edge("critic", "writer", condition=needs_revision)
-builder.set_max_node_executions(6)          # prevents infinite loops
-builder.set_execution_timeout(120)
+builder.add_edge("critic", "writer", condition=needs_revision) # cycle: revision → writer
+builder.set_max_node_executions(8)
+builder.set_execution_timeout(180)
 builder.reset_on_revisit(True)
-graph = builder.build()
-result = graph(prompt)
+
+result = builder.build()(brief)
+
+# Extract last approved draft
+for node in reversed(result.execution_order):
+    if node.node_id == "writer":
+        print(str(node.result))
+        break
 ```
 
+See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/).
+
 **Pricing:**
-- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
-- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)
 
-## Critic output format: critical design rule
+## Critical design rule: Critic output format
 
-The condition function `needs_revision` parses the Critic's text. The Critic **must** respond with either `APPROVED` or `REVISION NEEDED: ...`: if it writes prose instead, conditions fail silently and the graph either loops forever or exits prematurely. The system prompt must enforce this format.
+The condition function parses the Critic's text. The Critic **must** respond with exactly `APPROVED` or `REVISION NEEDED: [criteria]`. If it writes prose, conditions fail silently. The system prompt must enforce this.
 
 ## Prerequisites
 
 - Python 3.10 or higher
-- Module 2 (Single Agent) must be in the same `samples/` folder. The notebooks and chat.py load `decision_brief_tools.py` from `../02-single-agent/` at runtime — it contains the NovaCart mock data and business intelligence tools used across all modules. Production deployments are self-contained (they bundle their own `mock_tools.py`).
 
 ## Run
 
 ```bash
-uv pip install -r requirements.txt
-uv run python chat.py
+pip install -r requirements.txt
+python chat.py
 ```
+
+## Production
+
+Two separate A2A runtimes — `chain.py` manages the loop by passing context explicitly:
+
+```
+chain.py (local)
+  │
+  ├──A2A──► Writer Runtime   ← produces / revises the memo
+  │              ↑
+  │         brief + draft + REVISION NEEDED feedback
+  │              │
+  └──A2A──► Critic Runtime   ← APPROVED or REVISION NEEDED: ...
+```
+
+See [`production/README.md`](./production/README.md) for deploy instructions.
 
 ## Next
 
