@@ -155,6 +155,9 @@ def ensure_runtime_role(
         )["Role"]["Arn"]
     except botocore.exceptions.ClientError as e:
         code = e.response["Error"]["Code"]
+        if code == "EntityAlreadyExists":
+            # Another thread created the role concurrently — just get the ARN
+            return iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
         if code == "AccessDenied" or "iam:CreateRole" in str(e):
             raise RuntimeError(
                 f"\nCannot create IAM role '{role_name}': permission denied.\n\n"
