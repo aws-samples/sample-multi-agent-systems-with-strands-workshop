@@ -1,39 +1,32 @@
-# Pattern 3: Critic-Refiner - Production Deployment
+# Pattern 3: Critic-Refiner — Production Deployment
 
-Deploy the Pattern 3: Critic-Refiner to Amazon Bedrock AgentCore Runtime using the A2A protocol.
+Deploys two separate A2A specialist runtimes. `chain.py` coordinates the loop locally.
 
 ![Pattern 3: Critic-Refiner architecture](./architecture.png)
 
-**Pattern:** Researcher gathers data, then Critic-Refiner runs the Writer↔Critic quality loop internally until APPROVED.
-
+**Pattern:** Writer produces a draft → Critic evaluates → feedback loops back until APPROVED.  
 **Strands primitive:** `GraphBuilder + cycle`
-
----
-
-## Contents
-
-- [Architecture](#architecture)
-- [Files](#files)
-- [Deploy](#deploy)
-- [Invoke](#invoke)
-- [Multi-turn chat](#multi-turn-chat)
-- [Sample brief](#sample-brief)
-- [Cleanup](#cleanup)
-- [Observability](#observability)
-- [References](#references)
 
 ---
 
 ## Architecture
 
-![Pattern 3: Critic-Refiner architecture](./architecture.png)
+```
+chain.py (local)
+  │
+  ├──A2A──► Writer Runtime   ← Generator: produces / revises the memo
+  │              ↑
+  │         feedback (brief + draft + REVISION NEEDED)
+  │              │
+  └──A2A──► Critic Runtime   ← Evaluates: APPROVED or REVISION NEEDED: ...
+```
 
-**Specialists** run on port 9000 using the A2A protocol (`serve_a2a`).
-**Orchestrator** receives calls from `chat.py` via `invoke_agent_runtime` (HTTP),
-then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
-
-Per-session isolation: orchestrators keyed by `session_id` so different users
-never share conversation history.
+**Writer** and **Critic** are separate A2A runtimes.  
+`chain.py` manages the loop — context is passed explicitly in each A2A call:
+1. `writer(brief)` → draft
+2. `critic(draft)` → verdict
+3. If `REVISION NEEDED`: `writer(brief + previous_draft + feedback)` → revised draft
+4. Repeat until `APPROVED` or `max_cycles` reached
 
 ---
 
@@ -41,12 +34,13 @@ never share conversation history.
 
 | File | Purpose |
 |------|---------|
-| `deploy.py` | Deploy 3 runtimes (specialists A2A + orchestrator HTTP) |
+| `deploy.py` | Deploy 2 specialist runtimes (writer A2A + critic A2A) in parallel |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
-| `../chat.py` | Interactive multi-turn chat — run from the module root folder, not here |
-| `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
-| `orchestrator/main.py` | Orchestrator Runtime code |
-| `specialists/researcher/main.py`, `critic_refiner/` | A2A specialist runtimes |
+| `chain.py` | Coordinator — manages the Writer↔Critic loop locally |
+| `chat.py` | Interactive multi-turn chat (multiple conversations supported) |
+| `invoke.py` | Single invocation helper — wraps chain.py |
+| `specialists/writer/main.py` | Writer A2A runtime |
+| `specialists/critic/main.py` | Critic A2A runtime |
 
 ---
 
@@ -60,24 +54,22 @@ python deploy.py --name-prefix m5ws  # custom prefix (max 8 chars)
 python deploy.py --dry-run
 ```
 
-Deploys `3` runtimes: researcher (A2A), critic_refiner (A2A, Writer↔Critic loop internal).
+Deploys **2 runtimes**: writer (A2A) + critic (A2A).  
+Saves ARNs to `.env_arns`.
 
 ---
 
-## Invoke
+## Run
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m5_orchestrator-XXXXX
-```
+source .env_arns
 
----
+# Single invocation
+python invoke.py
+python invoke.py "your brief here"
 
-## Multi-turn chat
-
-```bash
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m5_orchestrator-XXXXX
+# Interactive multi-turn chat
+python chat.py
 ```
 
 ---
@@ -89,8 +81,8 @@ NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot)
 C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 
-First call: 5-10 min (cold start across 3 specialist runtimes).
-Subsequent calls in the same session: 2-4 min (warm containers).
+First call: 5-10 min (cold start across 2 runtimes).  
+Subsequent calls: 2-4 min (warm containers).
 
 ---
 
@@ -108,7 +100,7 @@ python cleanup.py --name-prefix m5 --dry-run
 AgentCore sends all telemetry to **Amazon CloudWatch**:
 
 - **Logs:** `/aws/bedrock-agentcore/runtimes/<id>-DEFAULT` (one per runtime)
-- **Traces:** CloudWatch Transaction Search (X-Ray settings > GenAI Observability)
+- **Traces:** CloudWatch Transaction Search — Writer and Critic spans visible per cycle
 
 ---
 
@@ -117,5 +109,4 @@ AgentCore sends all telemetry to **Amazon CloudWatch**:
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
 - [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/)
-- [Strands A2A Agent-as-Tool](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool)
 - [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)
