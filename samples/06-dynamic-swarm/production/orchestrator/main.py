@@ -1,9 +1,24 @@
 """
-Dynamic Swarm Orchestrator (Pattern 4) — A2AAgent as tools.
-A2AAgent not supported in Strands Swarm yet; Agent(tools=[]) achieves same semantics.
-https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool
-https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
-Per-session isolation prevents history leaks across users.
+Dynamic Swarm Orchestrator (Pattern 4) — production implementation.
+
+The Strands Swarm class (strands.multiagent.Swarm) implements autonomous agent
+handoffs via a `handoff_to_agent` tool injected into each agent's tool_registry.
+This requires agents to be local objects in the same process.
+
+In production with separate AgentCore Runtimes, each specialist runs in its own
+container and communicates via the A2A protocol (port 9000, JSON-RPC 2.0).
+A2AAgent wraps the remote endpoint as a client and does not expose tool_registry,
+so it cannot be used directly with the Swarm class.
+
+This implementation achieves equivalent autonomous-routing semantics using
+Agent(tools=[researcher_agent, analyst_agent, writer_agent]) where each @tool
+wraps an A2AAgent call. The orchestrator LLM decides which specialist to call
+and in what order, producing the same emergent routing as a Swarm.
+
+References:
+  Strands Swarm: https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/
+  Strands A2AAgent: https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/
+  AgentCore A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
 """
 import asyncio, logging, os, threading
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

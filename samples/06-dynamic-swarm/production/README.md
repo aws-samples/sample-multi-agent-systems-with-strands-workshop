@@ -6,7 +6,11 @@ Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using th
 
 **Pattern:** Researcher, Analyst, and Writer agents hand off autonomously. The LLM Orchestrator decides routing at runtime.
 
-**Strands primitive:** `Agent(tools=[])` with swarm-like routing
+**Strands primitive:** `Agent(tools=[])` with A2A specialists
+
+> **Production note:** The Strands [`Swarm`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/) class requires agents to be local objects in the same process — it injects a `handoff_to_agent` tool into each agent's `tool_registry`. In production, each specialist runs in a separate AgentCore Runtime container communicating via A2A protocol. [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) wraps the remote endpoint as a client and does not expose `tool_registry`, so the Swarm class cannot be used directly across runtimes today.
+>
+> This deployment achieves equivalent semantics: the orchestrator LLM receives all three specialists as `@tool` functions backed by `A2AAgent` calls and decides routing autonomously at runtime — the same emergent behavior as a Swarm, implemented as Agent-as-Tool over A2A.
 
 ---
 
