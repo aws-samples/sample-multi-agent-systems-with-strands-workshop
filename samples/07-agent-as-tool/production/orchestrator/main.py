@@ -1,20 +1,16 @@
 """
 Agent-as-Tool Orchestrator Runtime (Pattern 5).
 
-Receives user calls via BedrockAgentCoreApp (port 8080 / HTTP protocol).
-Delegates to specialist A2A Runtimes via A2AAgent with SigV4 auth.
+Specialists: Research Agent, Finance Agent, Legal Agent, Writer Agent.
+Each specialist is an A2A Runtime wrapped as a @tool.
+The orchestrator LLM (Agent) decides which specialists to call and in what order.
 
-Architecture:
-  chat.py ──invoke_agent_runtime──► Orchestrator (HTTP, port 8080)
-                                        │ A2AAgent (SigV4, port 9000)
-                                        ├──► Researcher Runtime
-                                        ├──► Analyst Runtime
-                                        └──► Synthesizer Runtime
-
-Session management:
-  sessionId  : from context.session_id (= runtimeSessionId, routes to same container)
-  actorId    : from context.request_headers X-Amzn-...-Custom-Actor-Id
-               Propagated to specialists via AgentCoreA2AAuth on each A2A call.
+  User ──invoke_agent_runtime──► Orchestrator (HTTP, port 8080)
+                                      │ A2AAgent (SigV4, port 9000)
+                                      ├──► Research Agent Runtime
+                                      ├──► Finance Agent Runtime
+                                      ├──► Legal Agent Runtime
+                                      └──► Writer Agent Runtime
 
 Strands Agent-as-Tool:
   https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool
@@ -24,60 +20,48 @@ AWS AgentCore A2A:
 import asyncio
 import logging
 import os
-import sys
 import threading
 import uuid
 from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent, tool
-# A2AAgent imported lazily inside _get_researcher/_get_analyst/_get_synthesizer
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 
-# A2A imports deferred to first call — avoids 30s cold-start timeout loading heavy libs
+sys.path = [str(Path(__file__).parent)] + __import__('sys').path
+from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
+
+import sys
 
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()
 
-REGION          = os.environ.get("AWS_REGION", "us-east-1")
-RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYST_ARN     = os.environ["ANALYST_RUNTIME_ARN"]
-SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+REGION           = os.environ.get("AWS_REGION", "us-east-1")
+RESEARCH_ARN     = os.environ["RESEARCH_RUNTIME_ARN"]
+FINANCE_ARN      = os.environ["FINANCE_RUNTIME_ARN"]
+LEGAL_ARN        = os.environ["LEGAL_RUNTIME_ARN"]
+WRITER_ARN       = os.environ["WRITER_RUNTIME_ARN"]
 
 ORCHESTRATOR_PROMPT = (
-    "You are an orchestrator using the Agent-as-Tool pattern. "
-    "Coordinate these three specialists in this order:\n"
-    "1. Call researcher_agent with the full decision brief.\n"
-    "2. Call analyst_agent with the brief and research findings.\n"
-    "3. Call synthesizer_agent with the brief, research, and analysis.\n"
-    "Execute all three steps. Pass outputs from one step as inputs to the next."
+    "You are an investment committee coordinator. For each investment request:\n"
+    "1. Call research_agent to gather company and market data.\n"
+    "2. Call finance_agent with the brief and research findings.\n"
+    "3. Call legal_agent with the brief to identify legal and compliance risks.\n"
+    "4. Call writer_agent with all findings to produce the final investment memo.\n"
+    "Execute all four steps. Pass relevant context from each specialist to the next."
 )
 
-# ── Singletons — one per container lifetime ───────────────────────────────────
-_researcher  = None
-_analyst     = None
-_synthesizer = None
-
-# Per-session orchestrators keyed by session_id; each gets its own
-# SlidingWindowConversationManager so history never leaks across users.
-_session_agents: dict = {}
-_session_lock         = threading.Lock()
+_research_agents: dict = {}
+_finance_agents:  dict = {}
+_legal_agents:    dict = {}
+_writer_agents:   dict = {}
+_session_agents:  dict = {}
+_session_lock     = threading.Lock()
 
 
 def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
-    """Call A2AAgent in an isolated thread with a fresh event loop.
-
-    BedrockAgentCoreApp runs the entrypoint in its own worker event loop.
-    Calling A2AAgent.__call__ (which internally uses run_async) from inside
-    that loop causes 'Event loop is closed' errors. Running in a fresh thread
-    with asyncio.new_event_loop() avoids this conflict entirely.
-
-    Strands A2A: https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/
-    """
-    from a2a_utils import extract_a2a_text
-    result_holder: list = [None, None]  # [result, exception]
-
-    def _run() -> None:
+    result_holder: list = [None, None]
+    def _run():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -86,11 +70,9 @@ def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
             result_holder[1] = exc
         finally:
             loop.close()
-
     t = threading.Thread(target=_run, daemon=True)
     t.start()
     t.join(timeout=timeout)
-
     if t.is_alive():
         raise TimeoutError(f"A2A call timed out after {timeout}s")
     if result_holder[1] is not None:
@@ -98,99 +80,73 @@ def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
     return extract_a2a_text(result_holder[0])
 
 
-def _get_researcher():
-    global _researcher
-    if _researcher is None:
+def _get_a2a(cache, arn, name, desc):
+    if arn not in cache:
         from strands.agent.a2a_agent import A2AAgent
-        from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(RESEARCHER_ARN, REGION),
-            client_config=make_a2a_config(region=REGION),
-            name="researcher",
-            description="Market research specialist.",
-        )
-        # Pre-populate to skip unauthenticated GET /.well-known/agent-card.json
-        agent._agent_card = build_agent_card(RESEARCHER_ARN, "researcher",
-            "Market research specialist.", REGION)
-        _researcher = agent
-    return _researcher
-
-
-def _get_analyst():
-    global _analyst
-    if _analyst is None:
-        from strands.agent.a2a_agent import A2AAgent
-        from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(ANALYST_ARN, REGION),
-            client_config=make_a2a_config(region=REGION),
-            name="analyst",
-            description="Business strategy analyst.",
-        )
-        agent._agent_card = build_agent_card(ANALYST_ARN, "analyst",
-            "Business strategy analyst.", REGION)
-        _analyst = agent
-    return _analyst
-
-
-def _get_synthesizer():
-    global _synthesizer
-    if _synthesizer is None:
-        from strands.agent.a2a_agent import A2AAgent
-        from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(SYNTHESIZER_ARN, REGION),
-            client_config=make_a2a_config(region=REGION),
-            name="synthesizer",
-            description="Executive memo writer.",
-        )
-        agent._agent_card = build_agent_card(SYNTHESIZER_ARN, "synthesizer",
-            "Executive memo writer.", REGION)
-        _synthesizer = agent
-    return _synthesizer
-
-
-# ── @tool functions — wrap A2AAgent calls ────────────────────────────────────
-
-@tool
-def researcher_agent(topic: str) -> str:
-    """Research market context, company data, benchmarks, and competitive intelligence.
-    Call this FIRST with the full decision brief.
-    Args:
-        topic: The decision topic to research.
-    """
-    return _call_a2a(_get_researcher(), topic)
+        a = A2AAgent(endpoint=a2a_endpoint(arn, REGION),
+                     client_config=make_a2a_config(region=REGION),
+                     name=name, description=desc)
+        a._agent_card = build_agent_card(arn, name, desc, REGION)
+        cache[arn] = a
+    return cache[arn]
 
 
 @tool
-def analyst_agent(brief: str, research_context: str) -> str:
-    """Analyze all decision options (A, B, C) using the research findings.
-    Call this SECOND after researcher_agent.
+def research_agent(topic: str) -> str:
+    """Gather market data, company metrics, and competitive intelligence for an investment topic.
+
     Args:
-        brief: The original decision brief.
-        research_context: Findings from researcher_agent.
+        topic: The company or investment topic to research
     """
-    return _call_a2a(_get_analyst(), f"Brief:\n{brief}\n\nResearch findings:\n{research_context}")
+    return _call_a2a(_get_a2a(_research_agents, RESEARCH_ARN, "research",
+                               "Market research and competitive intelligence specialist."), topic)
 
 
 @tool
-def synthesizer_agent(brief: str, research_context: str, analysis: str) -> str:
-    """Write the final leadership memo combining research and analysis.
-    Call this THIRD and LAST after analyst_agent.
+def finance_agent(brief: str, research_context: str) -> str:
+    """Analyze financial viability: ROI, unit economics, projections, and investment verdict.
+
     Args:
-        brief: The original decision brief.
-        research_context: Findings from researcher_agent.
-        analysis: Analysis from analyst_agent.
+        brief: The original investment brief
+        research_context: Market and company data from research_agent
     """
-    return _call_a2a(_get_synthesizer(), f"Brief:\n{brief}\n\nResearch:\n{research_context}\n\nAnalysis:\n{analysis}")
+    return _call_a2a(_get_a2a(_finance_agents, FINANCE_ARN, "finance",
+                               "Financial analyst — ROI, unit economics, investment verdict."),
+                     f"Brief:\n{brief}\n\nResearch:\n{research_context}")
+
+
+@tool
+def legal_agent(brief: str) -> str:
+    """Review legal and compliance risks: regulatory, data privacy, IP, due diligence flags.
+
+    Args:
+        brief: The investment brief to review
+    """
+    return _call_a2a(_get_a2a(_legal_agents, LEGAL_ARN, "legal",
+                               "Legal and compliance reviewer — risks and due diligence flags."), brief)
+
+
+@tool
+def writer_agent(brief: str, research_context: str, financial_analysis: str, legal_review: str) -> str:
+    """Write the final investment memo. Call LAST — after all other specialists.
+
+    Args:
+        brief: The original investment brief
+        research_context: Findings from research_agent
+        financial_analysis: Analysis from finance_agent
+        legal_review: Risk review from legal_agent
+    """
+    return _call_a2a(_get_a2a(_writer_agents, WRITER_ARN, "writer",
+                               "Investment memo writer — synthesizes all findings."),
+                     f"Brief:\n{brief}\n\nResearch:\n{research_context}\n\n"
+                     f"Financial:\n{financial_analysis}\n\nLegal:\n{legal_review}")
 
 
 def _get_session_agent(session_id: str) -> Agent:
-    """Return a per-session Agent with isolated conversation history."""
     with _session_lock:
         if session_id not in _session_agents:
             _session_agents[session_id] = Agent(
-                tools=[researcher_agent, analyst_agent, synthesizer_agent],
+                tools=[research_agent, finance_agent, legal_agent, writer_agent],
                 system_prompt=ORCHESTRATOR_PROMPT,
                 conversation_manager=SlidingWindowConversationManager(window_size=20),
                 callback_handler=None,
@@ -214,7 +170,7 @@ def invoke(payload, context):
             return result_str
         except Exception as exc:
             last_error = exc
-            _session_agents.pop(session_id, None)  # clear stale cache
+            _session_agents.pop(session_id, None)
             logger.warning("Attempt %d failed: %s — retrying in %ds", attempt+1, exc, 10*(attempt+1))
             if attempt < 2:
                 time.sleep(10 * (attempt + 1))
