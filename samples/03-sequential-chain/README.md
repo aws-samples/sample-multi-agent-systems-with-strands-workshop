@@ -59,6 +59,7 @@ Analysis:
 ## Prerequisites
 
 - Python 3.10 or higher
+- Module 2: this module imports tools from `../02-single-agent/decision_brief_tools.py`.
 
 ## Run
 
@@ -66,10 +67,6 @@ Analysis:
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
-
-## Prerequisites
-
-Module 1: this module imports tools from `../02-single-agent/decision_brief_tools.py`.
 
 ## Next
 

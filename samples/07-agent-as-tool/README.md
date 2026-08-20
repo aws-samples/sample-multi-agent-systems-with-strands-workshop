@@ -46,9 +46,8 @@ orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 
 ## Strands Agents SDK
 
-The Agents-as-Tools pattern is documented at [https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
-The Strands Agents SDK supports three ways to use agents as tools:
-passing agents directly in `tools[]`, using `.as_tool()`, or wrapping with the `@tool` decorator.
+The Strands Agents SDK supports three ways to use agents as tools. This module uses the `@tool` decorator for full parameter control.
+See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md).
 
 ```python
 # Option 1: pass Agent directly (SDK auto-converts; single string input)
@@ -57,15 +56,13 @@ orchestrator = Agent(tools=[researcher, analyst, writer])
 # Option 2: .as_tool() for custom name/description
 orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 
-# Option 3: @tool decorator (full parameter control: used in this module)
+# Option 3: @tool decorator (full parameter control, used in this module)
 @tool
 def researcher_agent(topic: str) -> str:
-    \"\"\"Research market context...\"\"\"\"
+    """Research market context..."""
     worker = Agent(tools=[...], system_prompt=..., callback_handler=None)
     return str(worker(topic))
 ```
-
-See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
@@ -74,6 +71,7 @@ See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/co
 ## Prerequisites
 
 - Python 3.10 or higher
+- Module 2 (Single Agent) must be in the same `samples/` folder. The notebooks and chat.py load `decision_brief_tools.py` from `../02-single-agent/` at runtime — it contains the NovaCart mock data and business intelligence tools used across all modules. Production deployments are self-contained (they bundle their own `mock_tools.py`).
 
 ## Run
 
@@ -81,10 +79,6 @@ See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/co
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
-
-## Prerequisites
-
-Module 2: imports tools from `../02-single-agent/decision_brief_tools.py`.
 
 ## Next
 
