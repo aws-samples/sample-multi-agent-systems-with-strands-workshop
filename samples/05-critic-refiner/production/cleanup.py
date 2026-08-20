@@ -2,8 +2,8 @@
 Cleanup Module 5: Critic-Refiner — delete all AgentCore resources.
 
 Deletes:
-  - 3 runtimes: {prefix}_researcher, _critic_refiner, _orchestrator
-  - 2 IAM roles: agentcore-{prefix}-runtime-role, agentcore-{prefix}-orchestrator-role
+  - 2 runtimes: {prefix}_writer, {prefix}_critic
+  - 1 IAM role: workshop-agentcore-{prefix}-runtime-role
   - S3 objects under m5-critic-refiner/
 
 Usage:

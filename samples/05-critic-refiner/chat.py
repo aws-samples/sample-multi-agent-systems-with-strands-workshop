@@ -4,8 +4,8 @@ Uses Strands GraphBuilder with a cycle edge:
   Writer drafts → Critic evaluates → REVISION NEEDED loops back → APPROVED exits
 
     cd samples/05-critic-refiner
-    pip install -r requirements.txt
-    python chat.py
+    uv pip install -r requirements.txt
+    uv run python chat.py
 
 Type 'quit' or Ctrl+C to stop.
 """

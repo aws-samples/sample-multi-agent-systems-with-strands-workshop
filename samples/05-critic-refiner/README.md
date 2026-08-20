@@ -85,12 +85,13 @@ The condition function parses the Critic's text. The Critic **must** respond wit
 ## Prerequisites
 
 - Python 3.10 or higher
+- Module 2: `decision_brief_tools.py` is available at `../02-single-agent/` for production's researcher specialist
 
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## Production
@@ -104,3 +105,4 @@ See [`production/README.md`](./production/README.md) for deploy instructions.
 ## Next
 
 → [Module 6: Dynamic Swarm](../06-dynamic-swarm/)
+

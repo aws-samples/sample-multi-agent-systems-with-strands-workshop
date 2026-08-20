@@ -1,4 +1,4 @@
-"""M4 Production: Critic-Refiner on AgentCore Runtime.
+"""M5 Production: Critic-Refiner on AgentCore Runtime.
 Pattern: GraphBuilder Writer + Critic quality loop (single runtime: SDK manages cycle state).
 
 Local test:  python main.py
@@ -44,6 +44,9 @@ CRITIC_PROMPT = (
 )
 
 
+# NOTE: the single-runtime version adds a researcher step before the writer-critic loop to
+# enrich the brief with real data. The multi-runtime version (chain.py) skips this step
+# for simplicity — chain.py passes the raw brief directly to the writer.
 researcher = Agent(tools=RESEARCH_TOOLS, system_prompt=RESEARCHER_PROMPT, callback_handler=None)
 writer     = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None)
 critic     = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None)
@@ -61,7 +64,7 @@ def invoke(payload, context):
     _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
-    logger.info("session.id=%s module=m4-critic-refiner", _session_id)
+    logger.info("session.id=%s module=m5-critic-refiner", _session_id)
 
     research_text = str(researcher(f"Gather data for: {brief}"))
 
