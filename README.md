@@ -18,12 +18,12 @@ Build, deploy, and scale multi-agent systems using reusable patterns with the [S
 |--------|-------------|-----------------|---------------------|
 | [01 Foundations](./samples/01-foundations/) | Strands agent loop, tools, callback handlers, and the single-agent ceiling | `Agent(tools=[...])` | n/a |
 | [02 Single Agent](./samples/02-single-agent/) | Multi-turn conversation with a single agent; session memory via `runtimeSessionId` | `Agent` + `SlidingWindowConversationManager` | n/a |
-| [03 Sequential Chain](./samples/03-sequential-chain/) | Researcher → Analyst → Synthesizer; each stage passes its output to the next | [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md) DAG | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [04 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Three option analyzers run simultaneously; results merged before synthesis | `GraphBuilder` + `asyncio.gather` | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [05 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until approved | `GraphBuilder` cycle with `set_max_node_executions` | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [06 Dynamic Swarm](./samples/06-dynamic-swarm/) | Agents hand off autonomously; routing emerges at runtime with no fixed path | `Agent(tools=[a2a_agents])` | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [07 Agent-as-Tool](./samples/07-agent-as-tool/) | LLM orchestrator delegates to specialists wrapped as `@tool` functions | [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) via `@tool` | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [08 Capstone](./samples/08-capstone/) | All four patterns combined; includes AgentCore Memory (STM + LTM) | P1 + P2 + P3 + P5 | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [03 Sequential Chain](./samples/03-sequential-chain/) | Researcher → Analyst → Synthesizer in fixed order; each stage passes output to the next | [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md) DAG | `chain.py` local · Specialists: **A2A** |
+| [04 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Researcher feeds three analyzers running simultaneously; results merged at the synthesizer | `GraphBuilder` DAG + parallel edges | `chain.py` local · Specialists: **A2A** |
+| [05 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until `APPROVED` | `GraphBuilder` cycle + `set_max_node_executions` | `chain.py` local · Specialists: **A2A** |
+| [06 Dynamic Swarm](./samples/06-dynamic-swarm/) | Incident response: Monitor → Network Specialist / DB Admin → Resolver; path emerges at runtime | `Swarm` (local) · `Agent(tools=[...])` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [07 Agent-as-Tool](./samples/07-agent-as-tool/) | Investment analysis: LLM orchestrator delegates to Research, Finance, Legal, Writer specialists as `@tool` | `@tool` wrapping `Agent` + `A2AAgent` | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [08 Capstone](./samples/08-capstone/) | All four patterns combined: 4 parallel heads → Program Revisor↔Critic loop → Leadership Memo | P2 + P3 + P5 + P1 | Orchestrator: **HTTP** · Specialists: **A2A** |
 
 Each module from **03 to 08** includes a `production/` subfolder with a complete, deployable AgentCore Runtime architecture.
 
@@ -95,14 +95,14 @@ Clone this repository and navigate to any module:
 
 ```bash
 cd samples/01-foundations
-uv pip install -r requirements.txt
-uv run jupyter notebook module-01.ipynb
+pip install -r requirements.txt
+jupyter notebook module-01.ipynb
 ```
 
-For multi-turn conversation with a deployed runtime:
+For production modules with deployed runtimes (06–08):
 
 ```bash
-cd samples/03-sequential-chain/production
+cd samples/06-dynamic-swarm/production
 python chat.py --actor-id <your-id> --runtime-arn <RUNTIME_ARN>
 ```
 
@@ -113,19 +113,21 @@ python chat.py --actor-id <your-id> --runtime-arn <RUNTIME_ARN>
 Each module from 03 to 08 has a `production/` subfolder. The deployment uses boto3 directly, no CLI required.
 
 ```bash
-cd samples/03-sequential-chain/production
+cd samples/06-dynamic-swarm/production   # or 07, 08
 
 # Step 1: Open the notebook and run all cells (installs deps, creates IAM roles, deploys)
 jupyter notebook production-deploy.ipynb
 
-# Or deploy from the terminal (advanced users):
-python deploy.py --name-prefix m3       # deploys all runtimes
-python invoke.py <RUNTIME_ARN>          # single invocation
-python chat.py --actor-id <id> --runtime-arn <RUNTIME_ARN>   # multi-turn
+# Or deploy from the terminal:
+python deploy.py --name-prefix m6       # deploys all runtimes
+python invoke.py <RUNTIME_ARN>          # single invocation (modules 06–08)
+
+# Modules 03–05: chain.py coordinates locally after deploy
+source .env_arns && python chain.py
 
 # Cleanup:
-python cleanup.py --name-prefix m3 --dry-run   # preview
-python cleanup.py --name-prefix m3             # delete all resources
+python cleanup.py --name-prefix m6 --dry-run   # preview
+python cleanup.py --name-prefix m6             # delete all resources
 ```
 
 What `deploy.py` creates per module:
@@ -134,7 +136,7 @@ What `deploy.py` creates per module:
 |----------|--------|
 | S3 bucket | `bedrock-agentcore-deploy-<account>-<region>` (stores code ZIPs) |
 | IAM roles | `workshop-agentcore-<prefix>-runtime-role` and `workshop-agentcore-<prefix>-orchestrator-role` |
-| AgentCore Runtimes | 1 HTTP orchestrator + 2–3 A2A specialists (depends on module) |
+| AgentCore Runtimes | Modules 03–05: 2–3 A2A specialists (no HTTP orchestrator — chain.py coordinates locally) · Modules 06–08: 1 HTTP orchestrator + A2A specialists |
 
 ---
 
