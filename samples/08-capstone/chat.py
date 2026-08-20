@@ -1,10 +1,10 @@
 """Interactive chat for Module 8: Decision-Memo System (Capstone).
 
-Combines all four multi-agent patterns:
-  P2 Parallel heads: Planner + Researcher + Analyzers run simultaneously
-  P3 Critic-Refiner: Program Revisor ↔ Critic quality loop
-  P5 Agent-as-Tool:  Orchestrator delegates to both tools
-  P1 Sequential:     Program Revisor synthesizes after parallel heads
+All 4 patterns combined:
+  P2 Parallel heads  — Planner + Researcher + Analyzer 1 + Analyzer 2 run simultaneously
+  P3 Critic-Refiner  — Program Revisor ↔ Critic quality loop
+  P5 Agent-as-Tool   — Orchestrator delegates via @tool
+  P1 Sequential      — Parallel phase → Program Revisor synthesis
 
     cd samples/08-capstone
     pip install -r requirements.txt
@@ -24,85 +24,85 @@ from strands.multiagent import GraphBuilder
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 PLANNER_PROMPT = (
-    "You are a decision planner. Analyze the brief and produce a structured analysis plan: "
-    "key questions to answer, what data is needed, what criteria matter for choosing between options. "
-    "100 words max."
+    "You are a decision planner. Analyze the brief: identify key questions, "
+    "data needed, and criteria for choosing between options. 80 words max."
 )
 RESEARCHER_PROMPT = (
     "You are a market research specialist. Use tools to gather data. "
-    "Return structured findings: data only, no recommendations."
+    "Return structured findings: data only."
 )
-ANALYZER_PROMPT = (
-    "Evaluate ONE option: strengths, weaknesses, complexity (Low/Med/High), "
-    "top 2 risks with mitigations, verdict. 100 words max."
+FINANCIAL_ANALYZER_PROMPT = (
+    "You are a financial analyst. For ALL three options (A, B, C), analyze: "
+    "revenue projections, ROI, payback period, budget fit, financial verdict. 150 words max."
+)
+RISK_ANALYZER_PROMPT = (
+    "You are a risk analyst. For ALL three options (A, B, C), analyze: "
+    "implementation complexity (Low/Med/High), top 2 risks per option, mitigations, verdict. 150 words max."
 )
 PROGRAM_REVISOR_PROMPT = (
-    "You are an executive memo writer. Synthesize plan and analyses into a COMPLETE leadership memo:\n"
+    "You are the Program Revisor. Synthesize plan + research + financial + risk into a memo:\n"
     "## Recommendation (one sentence: which option and why)\n"
-    "## Options at a Glance (table comparing A, B, C)\n"
+    "## Options at a Glance (table A/B/C: Complexity, Risk, Financial, Verdict)\n"
     "## Top 3 Risks with specific mitigations\n"
     "## Success Metrics (at least 2 KPIs with numeric targets)\n"
     "## Decision Required (owner, deadline, who approves)\n"
     "Revise if given feedback. Under 400 words."
 )
-CRITIC_PROMPT = (
-    "Check: 1)Recommendation. 2)Options table A/B/C. 3)3 Risks+mitigations. "
-    "4)2+ Metrics with targets. 5)Decision Required with owner+deadline.\n"
+CRITIC_GATE_PROMPT = (
+    "Quality critic. Check: 1)Recommendation. 2)Options table A/B/C. "
+    "3)3 Risks+mitigations. 4)2+ Metrics with targets. 5)Decision Required owner+deadline.\n"
     "Respond: APPROVED or REVISION NEEDED: [criteria numbers]"
 )
 ORCHESTRATOR_PROMPT = (
     "Decision-Memo System: "
-    "1. Call parallel_heads with the brief. "
-    "2. Call program_revisor with the brief and parallel_findings. "
+    "1. Call parallel_heads with the brief — runs 4 specialists simultaneously. "
+    "2. Call program_revisor with brief and parallel_findings — Program Revisor↔Critic loop. "
     "Execute both steps in order."
 )
 
 
 @tool
 def parallel_heads(brief: str) -> str:
-    """Run Planner, Researcher, Analyzer A, Analyzer B, Analyzer C simultaneously on the brief.
+    """Run 4 specialists simultaneously: Planner, Researcher, Analyzer 1 (financial), Analyzer 2 (risk).
 
     Args:
         brief: The full decision brief
     """
-    planner    = Agent(system_prompt=PLANNER_PROMPT, callback_handler=None)
+    planner    = Agent(system_prompt=PLANNER_PROMPT,            callback_handler=None)
     researcher = Agent(
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         system_prompt=RESEARCHER_PROMPT, callback_handler=None,
     )
-    analyzer_a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    analyzer_b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    analyzer_c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+    analyzer_1 = Agent(system_prompt=FINANCIAL_ANALYZER_PROMPT, callback_handler=None)
+    analyzer_2 = Agent(system_prompt=RISK_ANALYZER_PROMPT,      callback_handler=None)
 
     async def fork():
         return await asyncio.gather(
             planner.invoke_async(brief),
             researcher.invoke_async(brief),
-            analyzer_a.invoke_async(f"Option A: Exclusive Premium ($19.99/mo, invite-only top 10%)\nBrief: {brief}"),
-            analyzer_b.invoke_async(f"Option B: Gradual Rollout ($14.99/mo, 5% A/B pilot)\nBrief: {brief}"),
-            analyzer_c.invoke_async(f"Option C: Full Launch ($12.99/mo, open to all, 30-day trial)\nBrief: {brief}"),
+            analyzer_1.invoke_async(brief),
+            analyzer_2.invoke_async(brief),
         )
 
-    plan_out, research_out, a_out, b_out, c_out = asyncio.run(fork())
+    plan_out, research_out, fin_out, risk_out = asyncio.run(fork())
     return (
         f"PLAN:\n{plan_out}\n\n"
         f"RESEARCH:\n{research_out}\n\n"
-        f"OPTION A:\n{a_out}\n\n"
-        f"OPTION B:\n{b_out}\n\n"
-        f"OPTION C:\n{c_out}"
+        f"FINANCIAL ANALYSIS:\n{fin_out}\n\n"
+        f"RISK ANALYSIS:\n{risk_out}"
     )
 
 
 @tool
 def program_revisor(brief: str, parallel_findings: str) -> str:
-    """Synthesize parallel findings into an approved leadership memo via Program Revisor ↔ Critic loop.
+    """Synthesize parallel findings into an approved memo via Program Revisor ↔ Critic loop.
 
     Args:
         brief: The original decision brief
         parallel_findings: Combined output from parallel_heads
     """
     revisor = Agent(name="program_revisor", system_prompt=PROGRAM_REVISOR_PROMPT, callback_handler=None)
-    critic  = Agent(name="critic",          system_prompt=CRITIC_PROMPT,          callback_handler=None)
+    critic  = Agent(name="critic",          system_prompt=CRITIC_GATE_PROMPT,     callback_handler=None)
 
     def needs_revision(state):
         r = state.results.get("critic")
@@ -149,7 +149,7 @@ Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
             tools=[parallel_heads, program_revisor],
             system_prompt=ORCHESTRATOR_PROMPT,
         )
-        print("\nRunning Decision-Memo System (P2 → P3 via P5)...")
+        print("\nRunning: 4 parallel heads → Program Revisor↔Critic loop...")
         t0 = time.time()
         orchestrator(brief)
         elapsed = time.time() - t0
