@@ -28,7 +28,7 @@ A 3-stage pipeline: Researcher → Analyst → Synthesizer. Each agent has a nar
 
 ## Strands Agents SDK
 
-Sequential agent pipelines are implemented with the [Strands Agents SDK](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+Sequential agent pipelines are implemented with the [Strands Agents SDK](https://strandsagents.com/docs/).
 In Strands, a sequential workflow chains agents in Python: each agent's output becomes the next agent's input.
 See the [Workflow documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/workflow/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 

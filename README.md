@@ -2,7 +2,7 @@
 
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
-Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el). Progress from a single-agent ceiling through five production patterns - Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool - finishing with a deployed Decision-Memo system on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Progress from a single-agent foundation through five production patterns — Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool — finishing with a complete Decision-Memo system deployed on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/).
 
 ![Strands Agents](https://img.shields.io/badge/Strands_Agents-SDK-FF9900?logo=amazonaws&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
@@ -10,185 +10,179 @@ Build, deploy, and scale multi-agent systems using reusable patterns with the [S
 ![Multi-Agent](https://img.shields.io/badge/Multi--Agent-Patterns-01A88D?logo=amazonaws&logoColor=white)
 ![License MIT-0](https://img.shields.io/badge/License-MIT--0-green.svg)
 
+---
+
 ## Modules
 
-| Module | Description | Pattern | Stack |
-|--------|-------------|---------|-------|
-| [01 Strands Foundations](./samples/01-foundations/) | Single agent with tools, loop inspection, and the single-agent ceiling | Foundations | ![Strands](https://img.shields.io/badge/Strands-Agent-FF9900) |
-| [02 Sequential Chain](./samples/03-sequential-chain/) | Research → Analyst → Synthesizer pipeline; each stage passes output to the next | Pattern 1 | ![Strands](https://img.shields.io/badge/Strands-Sequential-FF9900) |
-| [03 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Three option analyzers run simultaneously via `asyncio.gather`; results merged | Pattern 2 | ![Strands](https://img.shields.io/badge/Strands-Parallel-FF9900) |
-| [04 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until approved - `GraphBuilder` cycle | Pattern 3 | ![Strands](https://img.shields.io/badge/Strands-GraphBuilder-FF9900) |
-| [05 Dynamic Swarm](./samples/06-dynamic-swarm/) | Agents hand off autonomously; routing emerges at runtime - no fixed path | Pattern 4 | ![Strands](https://img.shields.io/badge/Strands-Swarm-FF9900) |
-| [06 Agent-as-Tool](./samples/07-agent-as-tool/) | LLM orchestrator delegates to specialist agents wrapped as `@tool` functions | Pattern 5 | ![Strands](https://img.shields.io/badge/Strands-AgentTool-FF9900) |
-| [07 Capstone](./samples/08-capstone/) | Decision-Memo System combining all four patterns; deploys to AgentCore Runtime | P1+P2+P3+P5 | ![AgentCore](https://img.shields.io/badge/AgentCore-Runtime-01A88D) |
+| Module | Description | Strands Pattern | Production Protocol |
+|--------|-------------|-----------------|---------------------|
+| [01 Foundations](./samples/01-foundations/) | Strands agent loop, tools, callback handlers, and the single-agent ceiling | `Agent(tools=[...])` | — |
+| [02 Single Agent](./samples/02-single-agent/) | Multi-turn conversation with a single agent; session memory via `runtimeSessionId` | `Agent` + `SlidingWindowConversationManager` | — |
+| [03 Sequential Chain](./samples/03-sequential-chain/) | Researcher → Analyst → Synthesizer; each stage passes its output to the next | [`GraphBuilder`](https://strandsagents.com/docs/api/python/strands.multiagent/index.md) DAG | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [04 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Three option analyzers run simultaneously; results merged before synthesis | `GraphBuilder` + `asyncio.gather` | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [05 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until approved | `GraphBuilder` cycle with `set_max_node_executions` | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [06 Dynamic Swarm](./samples/06-dynamic-swarm/) | Agents hand off autonomously; routing emerges at runtime — no fixed path | `Agent(tools=[a2a_agents])` | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [07 Agent-as-Tool](./samples/07-agent-as-tool/) | LLM orchestrator delegates to specialists wrapped as `@tool` functions | [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) via `@tool` | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [08 Capstone](./samples/08-capstone/) | All four patterns combined; includes AgentCore Memory (STM + LTM) | P1 + P2 + P3 + P5 | Orchestrator: **HTTP** · Specialists: **A2A** |
 
-Each module from **02 to 07** includes a `production/` subfolder - a self-contained AgentCore Runtime ready for `agentcore deploy`.
+Each module from **03 to 08** includes a `production/` subfolder with a complete, deployable AgentCore Runtime architecture.
 
 ---
 
 ## What you'll build
 
-The **Decision-Memo System** - a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo with options A/B/C, risks, success metrics, and a recommendation.
+The **Decision-Memo System** — a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo covering options A/B/C, risks, success metrics, and a recommendation.
 
-![Decision-Memo System: Decision Brief enters an Orchestrator (Agent-as-Tool) that coordinates a Researcher (Sequential), three parallel Analyzers (Fork-Join), and a Critic-Refiner quality loop, producing a Leadership Memo](./samples/08-capstone/architecture.png)
+![Decision-Memo System: all four patterns combined](./samples/08-capstone/architecture.png)
 
 ---
 
 ## Why multi-agent systems?
 
-A single agent faces hard limits: a finite context window, one model's reasoning, and no parallelism. Multi-agent systems decompose complex tasks and delegate to specialists.
+A single agent faces hard limits: one context window, one model's reasoning, and no parallelism. Multi-agent systems decompose complex tasks and delegate to specialists.
 
 | Challenge | Single Agent | Multi-Agent System |
 |-----------|-------------|-------------------|
 | Complex tasks | One context for everything | Decomposes into focused sub-tasks |
-| Parallelism | Sequential only | Workers run concurrently |
+| Parallelism | Sequential only | Specialists run concurrently |
 | Quality control | Hope the output is good | Critic enforces a quality gate |
 | Failure scope | One failure = full failure | Isolated failure, graceful recovery |
 | Observability | One trace | Per-agent OTEL traces + system view |
 
-> The same patterns - Sequential Chain, Fork-Join, Critic-Refiner, Swarm, and Agent-as-Tool - are general multi-agent design concepts and apply to other agent frameworks.
+> The same patterns — Sequential Chain, Fork-Join, Critic-Refiner, Swarm, and Agent-as-Tool — are general multi-agent design concepts that apply to other agent frameworks.
 
 ---
 
-## How do I get started?
+## How the production protocols work
 
-Open Module 1 in VS Code or JupyterLab and run cells top to bottom. Each module's README explains the concept and links to the next.
+Modules 03–08 each deploy **multiple AgentCore Runtimes** that communicate over two protocols:
 
-```bash
-git clone https://github.com/elizabethfuentes12/multi-agent-systems-with-strands-workshop.git
-cd multi-agent-systems-with-strands-workshop
-```
+### HTTP protocol — Orchestrator Runtime
 
-Then open `samples/01-foundations/` and run `module-01.ipynb`.
+The entry point for user requests. The orchestrator runs [`BedrockAgentCoreApp`](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-getting-started.html) on **port 8080** at path `/invocations`. Users call it via `invoke_agent_runtime` (boto3) or `chat.py`.
+
+The orchestrator coordinates specialists by calling them via A2A using [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) from the Strands SDK, with SigV4 authentication handled automatically by AgentCore.
+
+### A2A protocol — Specialist Runtimes
+
+Each specialist runs [`serve_a2a(StrandsA2AExecutor(agent))`](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html) on **port 9000** at path `/`. The A2A protocol uses JSON-RPC 2.0 for agent-to-agent communication and provides automatic agent discovery via an agent card at `/.well-known/agent-card.json`.
+
+Key differences from HTTP:
+
+| | HTTP (Orchestrator) | A2A (Specialists) |
+|-|--------------------|--------------------|
+| Port | 8080 | 9000 |
+| Path | `/invocations` | `/` |
+| Protocol | HTTP + JSON | JSON-RPC 2.0 |
+| Authentication | SigV4 / OAuth 2.0 | SigV4 / OAuth 2.0 |
+| Discovery | — | `/.well-known/agent-card.json` |
+| Strands class | `BedrockAgentCoreApp` | `serve_a2a` + `StrandsA2AExecutor` |
+| Invoked by | Users via boto3 | Orchestrator via `A2AAgent` |
+
+References: [AgentCore A2A](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html) · [Strands A2AAgent](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) · [Deploy to AgentCore](https://strandsagents.com/docs/user-guide/deploy/deploy_to_bedrock_agentcore/)
 
 ---
 
-## Which Amazon Bedrock model does this use?
+## How to get started
 
-This workshop uses **[Amazon Bedrock](https://aws.amazon.com/bedrock/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)** as the model provider. The default model is Claude Sonnet 4.
-To change the model ID, pass `model=BedrockModel(model_id="<MODEL_ID>")` to `Agent(...)`.
-See all available model IDs: [Amazon Bedrock model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
-See pricing: [Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+### In AWS Workshop Studio
 
----
+Open the workshop environment — all dependencies are pre-installed. Open any module notebook and run cells top to bottom.
 
-## How do I set up the environment?
+### Locally
 
-This workshop runs in a hosted VS Code environment (AWS Workshop Studio) with all dependencies pre-installed. To run locally, install [uv](https://docs.astral.sh/uv/) and then:
+Clone this repository and navigate to any module:
 
 ```bash
-aws configure   # Strands uses Amazon Bedrock by default
-```
-
-Each module has its own `requirements.txt`. Install only what you need:
-
-```bash
-cd samples/03-sequential-chain
+cd samples/01-foundations
 uv pip install -r requirements.txt
-uv run python chat.py
+uv run jupyter notebook module-01.ipynb
 ```
 
-### Deploy modules require the AgentCore CLI (Node.js 20+)
+For multi-turn conversation with a deployed runtime:
 
 ```bash
-sudo npm install -g @aws/agentcore
+cd samples/03-sequential-chain/production
+python chat.py --actor-id <your-id> --runtime-arn <RUNTIME_ARN>
 ```
 
 ---
 
-## What are the prerequisites?
+## How to deploy a production module
+
+Each module from 03 to 08 has a `production/` subfolder. The deployment uses boto3 directly — no CLI required.
+
+```bash
+cd samples/03-sequential-chain/production
+
+# Step 1: Open the notebook and run all cells (installs deps, creates IAM roles, deploys)
+jupyter notebook production-deploy.ipynb
+
+# Or deploy from the terminal (advanced users):
+python deploy.py --name-prefix m3       # deploys all runtimes
+python invoke.py <RUNTIME_ARN>          # single invocation
+python chat.py --actor-id <id> --runtime-arn <RUNTIME_ARN>   # multi-turn
+
+# Cleanup:
+python cleanup.py --name-prefix m3 --dry-run   # preview
+python cleanup.py --name-prefix m3             # delete all resources
+```
+
+What `deploy.py` creates per module:
+
+| Resource | Detail |
+|----------|--------|
+| S3 bucket | `bedrock-agentcore-deploy-<account>-<region>` — stores code ZIPs |
+| IAM roles | `workshop-agentcore-<prefix>-runtime-role` and `workshop-agentcore-<prefix>-orchestrator-role` |
+| AgentCore Runtimes | 1 HTTP orchestrator + 2–3 A2A specialists (depends on module) |
+
+---
+
+## Prerequisites
 
 | Requirement | Detail |
 |-------------|--------|
 | Python | 3.10 or higher (3.13 recommended) |
-| AWS credentials | Amazon Bedrock access - see [model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) for the full list |
-| Modules 02–07 production | `@aws/agentcore` CLI (npm), `uv`, AWS CDK |
+| AWS credentials | Amazon Bedrock access — enable models at [Bedrock console](https://console.aws.amazon.com/bedrock/) |
+| Region | `us-east-1` (default; set `AWS_REGION` env var to change) |
+| Modules 03–08 production | AWS credentials with AgentCore, IAM, and S3 permissions |
 
----
-
-## How does multi-agent delegation work in Strands?
-
-In Strands, an agent wrapped as a `@tool` can be called by an orchestrator like any other function. The LLM reads the docstring to decide when to call it and what arguments to pass.
-
-```python
-from strands import Agent, tool
-
-@tool
-def researcher_agent(topic: str) -> str:
-    """Research market context, company data, and competitor intelligence.
-    Args:
-        topic: The decision topic to research
-    """
-    worker = Agent(tools=[get_company_data, get_benchmarks], system_prompt=RESEARCHER_PROMPT,
-                   callback_handler=None)
-    return str(worker(topic))
-
-orchestrator = Agent(
-    tools=[researcher_agent, analyzer_agent, synthesizer_agent],
-    system_prompt=ORCHESTRATOR_PROMPT,
-)
-orchestrator("Evaluate NovaCart Premium Tier launch - brief attached.")
-```
-
----
-
-## How do I deploy a module to Amazon Bedrock AgentCore?
-
-Each module from 02 to 07 has a `production/` subfolder - a self-contained AgentCore Runtime. Deploy any of them:
-
-```bash
-cd samples/03-sequential-chain/production/
-
-agentcore create                  # name the project
-cd <project-name>
-agentcore add                     # Bring my own code → entrypoint: main.py
-
-cp ../main.py ../mock_tools.py ../requirements.txt app/<AgentName>/
-cd app/<AgentName>
-uv init --bare --python 3.13
-uv add strands-agents bedrock-agentcore aws-opentelemetry-distro boto3
-cd ../..
-
-agentcore deploy
-agentcore invoke "Evaluate NovaCart Premium Tier..."
-```
-
-### How do I clean up AWS resources after the workshop?
-
-```bash
-# Inside the project folder:
-agentcore remove all -y   # resets local config
-agentcore deploy          # removes the Runtime and CDK stack from AWS
-```
+The default model is **Claude Sonnet 4** via Amazon Bedrock cross-region inference. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
 
 ---
 
 ## Frequently asked questions
 
 **Do I need to complete the modules in order?**
-Yes - modules build progressively. Module 1 covers Strands foundations; each subsequent module adds one pattern. The Capstone (Module 7) combines all four patterns.
+Yes — modules build progressively. Module 01 covers Strands foundations; each subsequent module adds one pattern. The Capstone (Module 08) combines all patterns. Modules 03–07 can be explored in any order after Module 01.
 
 **How long does the full workshop take?**
-About 90 minutes for all seven modules. Each module runs 15–20 minutes. Module 1 (foundations) and Module 7 (capstone) are essential; the pattern modules (02–06) can be explored in any order after Module 1.
+About 2 hours for all eight modules. Modules 01–02 (foundations) are 15 minutes each; pattern modules 03–07 are 20 minutes each; the Capstone (08) is 30 minutes.
 
 **What AWS services does this use?**
-Amazon Bedrock (model inference), Amazon Bedrock AgentCore Runtime (managed agent hosting), Amazon CloudWatch (OTEL traces and logs), and AWS CDK (infrastructure provisioning for production modules).
+Amazon Bedrock (model inference), Amazon Bedrock AgentCore Runtime (managed agent hosting), Amazon S3 (code bundles), AWS IAM (execution roles), and Amazon CloudWatch (OTEL traces and logs).
 
 **Do I need AgentCore to run the notebooks?**
-No. Modules 01–07 notebooks and `chat.py` scripts run locally with only `strands-agents` and AWS Bedrock credentials. AgentCore Runtime is used only in the `production/` deploy folders.
+No. Modules 01–08 notebooks and `chat.py` scripts run locally with only `strands-agents` and AWS Bedrock credentials. AgentCore Runtime is used only in the `production/` deploy folders.
 
 **Can these patterns be used with other agent frameworks?**
 Yes. Sequential Chain, Fork-Join, Critic-Refiner, Swarm, and Agent-as-Tool are general multi-agent design patterns. This workshop implements them with the Strands Agents SDK; the same concepts apply to other frameworks.
+
+**Why do the specialists use A2A instead of HTTP?**
+A2A (Agent-to-Agent) provides built-in agent discovery via agent cards, standard JSON-RPC communication, and session isolation — making it the right protocol for agent-to-agent calls. HTTP is used for the orchestrator because it receives plain JSON payloads from user-facing clients (boto3, chat.py). See [AgentCore A2A documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html).
 
 ---
 
 ## Resources
 
-- [Strands Agents Documentation](https://strandsagents.com/latest/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Strands Agents Documentation](https://strandsagents.com/docs/)
 - [Strands Agents SDK on GitHub](https://github.com/strands-agents/sdk-python)
-- [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
-- [Multi-Agent Patterns - Strands Docs](https://strandsagents.com/latest/user-guide/concepts/multi-agent/multi-agent-systems/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
-- [AgentCore Web Search Connector](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-connector-web-search-tool.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)
+- [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/)
+- [AgentCore Runtime A2A Protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
+- [Strands A2AAgent API Reference](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md)
+- [Deploy Strands Agents to AgentCore](https://strandsagents.com/docs/user-guide/deploy/deploy_to_bedrock_agentcore/)
+- [Amazon Bedrock Model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html)
+- [Amazon Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)
 
 ---
 

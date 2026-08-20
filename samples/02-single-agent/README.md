@@ -1,4 +1,4 @@
-# Module 1: Strands Foundations
+# Module 2: Single Agent
 
 Build a Decision Intelligence agent with tools, run it, and inspect the agentic loop. Understand the single-agent ceiling before moving to multi-agent patterns.
 
