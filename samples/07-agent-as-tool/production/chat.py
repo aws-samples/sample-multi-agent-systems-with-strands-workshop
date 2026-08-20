@@ -1,3 +1,4 @@
+import os
 """
 Interactive multi-turn chat with the Agent-as-Tool AgentCore Runtime.
 
@@ -98,7 +99,7 @@ def _make_client(actor_id: str) -> boto3.client:
     """
     client = boto3.client(
         "bedrock-agentcore",
-        region_name="us-east-1",
+        region_name=os.environ.get("AWS_REGION","us-east-1"),
         config=Config(read_timeout=300),
     )
 

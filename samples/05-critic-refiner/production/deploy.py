@@ -93,6 +93,8 @@ def main():
 
     print(f"\n=== Deployment complete ===")
     print(f"Orchestrator ARN: {orch_arn}")
+    with open(".runtime_arn", "w") as _f:
+        _f.write(orch_arn)
     print(f"Invoke:  python invoke.py {orch_arn}")
     print(f"Chat:    python chat.py --actor-id <id> --runtime-arn {orch_arn}")
     print(f"Cleanup: python cleanup.py --name-prefix {prefix}")

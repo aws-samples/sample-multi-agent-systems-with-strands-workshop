@@ -1,3 +1,4 @@
+import os
 import boto3, json, sys, uuid
 from botocore.config import Config
 
@@ -9,7 +10,7 @@ if not RUNTIME_ARN:
 
 client = boto3.client(
     "bedrock-agentcore",
-    region_name="us-east-1",
+    region_name=os.environ.get("AWS_REGION","us-east-1"),
     config=Config(read_timeout=300),
 )
 
