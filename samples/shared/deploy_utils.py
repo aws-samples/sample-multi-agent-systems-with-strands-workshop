@@ -12,7 +12,7 @@ IAM role resolution order (for ensure_runtime_role):
 Workshop Studio: set AGENTCORE_RUNTIME_ROLE_ARN and AGENTCORE_ORCHESTRATOR_ROLE_ARN
 to pre-created role ARNs so deploy.py never needs iam:CreateRole.
 """
-import io, json, os, tempfile, threading, time, zipfile
+import io, json, os, tempfile, threading, time, warnings, zipfile
 from pathlib import Path
 
 import boto3
@@ -72,7 +72,8 @@ def zip_folder(folder: Path) -> bytes:
         req = folder / "requirements.txt"
         if req.exists():
             from pip._internal.cli.main import main as _pip_main
-            with _PIP_LOCK:
+            with _PIP_LOCK, warnings.catch_warnings():
+                warnings.simplefilter("ignore")
                 exit_code = _pip_main([
                     "install", "-r", str(req),
                     "-t", tmpdir,
@@ -264,8 +265,17 @@ def create_runtime(
         kwargs["environmentVariables"] = env_vars
     if protocol != "HTTP":
         kwargs["protocolConfiguration"] = {"serverProtocol": protocol}
-    resp = ctl_client.create_agent_runtime(**kwargs)
-    return resp["agentRuntimeId"], resp["agentRuntimeArn"]
+    try:
+        resp = ctl_client.create_agent_runtime(**kwargs)
+        return resp["agentRuntimeId"], resp["agentRuntimeArn"]
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "ConflictException":
+            existing = list_all_runtimes(ctl_client)
+            runtime_id = existing.get(name)
+            if runtime_id:
+                info = ctl_client.get_agent_runtime(agentRuntimeId=runtime_id)
+                return runtime_id, info["agentRuntimeArn"]
+        raise
 
 
 def wait_ready(ctl_client, runtime_id: str, timeout: int = 600) -> str:
