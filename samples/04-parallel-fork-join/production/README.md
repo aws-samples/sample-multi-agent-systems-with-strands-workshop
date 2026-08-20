@@ -1,26 +1,11 @@
 # Pattern 2: Parallel Fork-Join - Production Deployment
 
-Deploy the Pattern 2: Parallel Fork-Join to Amazon Bedrock AgentCore Runtime using the A2A protocol.
+Deploy Pattern 2 (Parallel Fork-Join) to Amazon Bedrock AgentCore Runtime using the A2A protocol.
 
 ![Pattern 2: Parallel Fork-Join architecture](./architecture.png)
 
-**Pattern:** Researcher gathers data, then 3 Analyzers run simultaneously (Options A, B, C), results merge to Synthesizer.
-
-**Strands primitive:** `GraphBuilder (DAG)`
-
----
-
-## Contents
-
-- [Architecture](#architecture)
-- [Files](#files)
-- [Deploy](#deploy)
-- [Invoke](#invoke)
-- [Multi-turn chat](#multi-turn-chat)
-- [Sample brief](#sample-brief)
-- [Cleanup](#cleanup)
-- [Observability](#observability)
-- [References](#references)
+**Pattern:** Researcher gathers data → 3 Analyzers run in parallel (Options A, B, C) → Synthesizer joins results.  
+**Strands primitive:** `GraphBuilder` (Workflow / DAG)
 
 ---
 
@@ -29,21 +14,23 @@ Deploy the Pattern 2: Parallel Fork-Join to Amazon Bedrock AgentCore Runtime usi
 ```
 User
  |
- v  sessionId = runtimeSessionId (routes to same container)
- |  actorId   = X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id header
-Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
- |  GraphBuilder DAG: `researcher → [analyzer_a || analyzer_b || analyzer_c] → synthesizer`
-  ├──A2A──► Researcher Runtime
-  ├──A2A──► Analyzer Runtime (×3 concurrent)
-  └──A2A──► Synthesizer Runtime
+chain.py  (local Python script — Strands GraphBuilder)
+ |  A2AAgent (SigV4, port 9000)
+ ├──A2A──► Researcher Runtime
+ ├──A2A──► Analyzer Runtime (×3 concurrent — same ARN, parallel instances)
+ └──A2A──► Synthesizer Runtime
 ```
 
-**Specialists** run on port 9000 using the A2A protocol (`serve_a2a`).
-**Orchestrator** receives calls from `chat.py` via `invoke_agent_runtime` (HTTP),
-then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
+**Specialists** run as AgentCore Runtimes on port 9000 using the A2A protocol.  
+**Coordination** is handled by `chain.py` — a local Python script using `GraphBuilder` with `A2AAgent` nodes.
 
-Per-session isolation: orchestrators keyed by `session_id` so different users
-never share conversation history.
+No orchestrator runtime is deployed. Pattern 2 is a deterministic DAG with no LLM routing decisions,
+so a lightweight coordinator script is enough.
+
+> **Production alternatives for the coordination layer:**  
+> - AWS Lambda — stateless, event-driven, no servers  
+> - AWS Step Functions — durable parallel branches with Map state  
+> The specialist runtimes stay unchanged in all cases.
 
 ---
 
@@ -51,12 +38,14 @@ never share conversation history.
 
 | File | Purpose |
 |------|---------|
-| `deploy.py` | Deploy 4 runtimes (specialists A2A + orchestrator HTTP) |
+| `deploy.py` | Deploy 3 specialist runtimes (A2A) in parallel |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
-| `../chat.py` | Interactive multi-turn chat — run from the module root folder, not here |
-| `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
-| `orchestrator/main.py` | Orchestrator Runtime code |
-| `specialists/researcher/main.py`, `analyzer/`, `synthesizer/` | A2A specialist runtimes |
+| `chain.py` | Fork-join coordinator — runs locally via GraphBuilder |
+| `a2a_utils.py` | SigV4 auth and A2A utilities for chain.py |
+| `invoke.py` | Single invocation helper — wraps chain.py |
+| `specialists/researcher/main.py` | Researcher A2A runtime |
+| `specialists/analyzer/main.py` | Analyzer A2A runtime (called 3× in parallel) |
+| `specialists/synthesizer/main.py` | Synthesizer A2A runtime |
 
 ---
 
@@ -70,24 +59,17 @@ python deploy.py --name-prefix m4ws  # custom prefix (max 8 chars)
 python deploy.py --dry-run
 ```
 
-Deploys `4` runtimes: researcher (A2A), analyzer (A2A, called 3× in parallel), synthesizer (A2A).
+Deploys **3 runtimes**: researcher (A2A), analyzer (A2A, called 3× in parallel), synthesizer (A2A).  
+Saves ARNs to `.env_arns`.
 
 ---
 
-## Invoke
+## Run the chain
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m4_orchestrator-XXXXX
-```
-
----
-
-## Multi-turn chat
-
-```bash
-python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m4_orchestrator-XXXXX
+source .env_arns
+python chain.py                         # default brief
+python chain.py "your brief here"       # custom brief
 ```
 
 ---
@@ -99,8 +81,8 @@ NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot)
 C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 
-First call: 5-10 min (cold start across 4 specialist runtimes).
-Subsequent calls in the same session: 2-4 min (warm containers).
+First call: 5-10 min (cold start across 3 specialist runtimes).  
+Subsequent calls: 2-4 min (warm containers).
 
 ---
 
@@ -118,7 +100,7 @@ python cleanup.py --name-prefix m4 --dry-run
 AgentCore sends all telemetry to **Amazon CloudWatch**:
 
 - **Logs:** `/aws/bedrock-agentcore/runtimes/<id>-DEFAULT` (one per runtime)
-- **Traces:** CloudWatch Transaction Search (X-Ray settings > GenAI Observability)
+- **Traces:** CloudWatch Transaction Search — the three Analyzer spans appear in parallel in the timeline
 
 ---
 
@@ -127,5 +109,5 @@ AgentCore sends all telemetry to **Amazon CloudWatch**:
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
 - [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/)
-- [Strands A2A Agent-as-Tool](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool)
+- [Strands A2AAgent](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/)
 - [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)
