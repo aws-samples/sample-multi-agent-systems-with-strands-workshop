@@ -29,20 +29,18 @@ SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
 import deploy_utils as u
 
-REGION = "us-east-1"
+REGION = u.REGION
 MODULE = "m7-agent-as-tool"
 HERE   = Path(__file__).parent
 
 
-def _deploy_specialist(session, bucket, account, name, folder):
+def _deploy_specialist(session, bucket, account, prefix, name, folder):
     """Deploy one A2A specialist runtime (port 9000, JSON-RPC 2.0)."""
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam",                       region_name=REGION)
     s3  = session.client("s3",                        region_name=REGION)
 
-    role_arn = u.ensure_runtime_role(
-        iam, f"agentcore-{name.replace('_', '-')}-role", account, REGION, bucket
-    )
+    role_arn = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-runtime-role", account, REGION, bucket)
     s3_key = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
     print(f"  [{name}] uploaded → s3://{bucket}/{s3_key}")
 
@@ -66,12 +64,8 @@ def main():
     args = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    session = u.get_session()
-    account = u.get_account(session)
-    bucket  = u.code_bucket_name(account, REGION)
-
     if args.dry_run:
-        print(f"Dry run (prefix={prefix}, account={account})")
+        print(f"Dry run (prefix={prefix})")
         for n, proto in [
             (f"{prefix}_researcher",  "A2A"),
             (f"{prefix}_analyst",     "A2A"),
@@ -81,6 +75,9 @@ def main():
             print(f"  would create runtime: {n:<25} protocol={proto}")
         return
 
+    session = u.get_session()
+    account = u.get_account(session)
+    bucket  = u.code_bucket_name(account, REGION)
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam",                       region_name=REGION)
     s3c = session.client("s3",                        region_name=REGION)
@@ -103,7 +100,7 @@ def main():
     arns: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=3) as pool:
         futures = {
-            pool.submit(_deploy_specialist, session, bucket, account, name, folder): name
+            pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
             for name, folder in specialist_defs
         }
         for future in as_completed(futures):
@@ -112,7 +109,7 @@ def main():
 
     print("\n=== Step 2: Deploy HTTP orchestrator ===")
     orch_role = u.ensure_runtime_role(
-        iam, f"agentcore-{prefix}-orchestrator-role", account, REGION, bucket,
+        iam, f"workshop-agentcore-{prefix}-orchestrator-role", account, REGION, bucket,
         can_invoke_runtimes=True,
         specialist_arns=[arns[researcher_name], arns[analyst_name], arns[synthesizer_name]],
     )

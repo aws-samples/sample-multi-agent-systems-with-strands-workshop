@@ -45,7 +45,7 @@ SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
 import deploy_utils as u
 
-REGION  = "us-east-1"
+REGION  = u.REGION
 MODULE  = "m8-capstone"
 HERE    = Path(__file__).parent
 
@@ -113,15 +113,13 @@ def delete_memory(ctl, memory_id: str):
 
 # ── Specialist deployment ──────────────────────────────────────────────────────
 
-def _deploy_specialist(session, bucket, account, name, folder):
+def _deploy_specialist(session, bucket, account, prefix, name, folder):
     """Deploy one specialist runtime (no Memory needed — stateless tools)."""
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam",                       region_name=REGION)
     s3  = session.client("s3",                        region_name=REGION)
 
-    role_arn = u.ensure_runtime_role(
-        iam, f"agentcore-{name.replace('_', '-')}-role", account, REGION, bucket
-    )
+    role_arn = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-runtime-role", account, REGION, bucket)
     s3_key = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
     print(f"  [{name}] uploaded → s3://{bucket}/{s3_key}")
 
@@ -134,93 +132,13 @@ def _deploy_specialist(session, bucket, account, name, folder):
 
 # ── Orchestrator IAM (needs Memory + InvokeAgentRuntime) ──────────────────────
 
-def ensure_orchestrator_role(iam, role_name: str, account: str, bucket: str,
-                              memory_id: str = None) -> str:
-    """Create IAM role for the Orchestrator runtime.
-
-    Permissions beyond the default specialist role:
-      - bedrock-agentcore:InvokeAgentRuntime  — to call specialist runtimes
-      - bedrock-agentcore Memory data-plane    — to read/write conversation events
-    """
-    import json
-
-    trust = json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-        }],
-    })
-    try:
-        return iam.get_role(RoleName=role_name)["Role"]["Arn"]
-    except iam.exceptions.NoSuchEntityException:
-        pass
-
-    role_arn = iam.create_role(
-        RoleName=role_name, AssumeRolePolicyDocument=trust,
-        Description="Orchestrator runtime role: Bedrock inference + invoke specialists + Memory",
-    )["Role"]["Arn"]
-
-    statements = [
-        # Bedrock model inference
-        {
-            "Effect": "Allow",
-            "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            "Resource": [
-                "arn:aws:bedrock:*::foundation-model/*",
-                f"arn:aws:bedrock:*:{account}:inference-profile/*",
-                "arn:aws:bedrock:*::inference-profile/*",
-            ],
-        },
-        # CloudWatch Logs
-        {
-            "Effect": "Allow",
-            "Action": ["logs:CreateLogGroup", "logs:CreateLogStream",
-                       "logs:DescribeLogGroups", "logs:PutLogEvents"],
-            "Resource": f"arn:aws:logs:{REGION}:{account}:log-group:/aws/bedrock-agentcore/*",
-        },
-        # S3 — code bundle
-        {
-            "Effect": "Allow",
-            "Action": ["s3:GetObject", "s3:ListBucket"],
-            "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
-        },
-        # Call specialist runtimes
-        {
-            "Effect": "Allow",
-            "Action": "bedrock-agentcore:InvokeAgentRuntime",
-            "Resource": f"arn:aws:bedrock-agentcore:{REGION}:{account}:runtime/*",
-        },
-    ]
-
-    if memory_id:
-        # AgentCore Memory data-plane permissions for STM + LTM operations
-        statements.append({
-            "Effect": "Allow",
-            "Action": [
-                "bedrock-agentcore:CreateEvent",
-                "bedrock-agentcore:GetEvent",
-                "bedrock-agentcore:ListEvents",
-                "bedrock-agentcore:DeleteEvent",
-                "bedrock-agentcore:RetrieveMemoryRecords",
-                "bedrock-agentcore:ListMemoryRecords",
-                "bedrock-agentcore:GetMemoryRecord",
-            ],
-            "Resource": f"arn:aws:bedrock-agentcore:{REGION}:{account}:memory/{memory_id}",
-        })
-
-    iam.put_role_policy(
-        RoleName=role_name,
-        PolicyName="orchestrator-runtime-policy",
-        PolicyDocument=json.dumps({"Version": "2012-10-17", "Statement": statements}),
+def _get_orchestrator_role(iam, account: str, prefix: str, bucket: str, memory_id: str = None) -> str:
+    """Get or create the orchestrator IAM role for this deployment prefix."""
+    return u.ensure_runtime_role(
+        iam, f"workshop-agentcore-{prefix}-orchestrator-role", account, REGION, bucket,
+        can_invoke_runtimes=True,
+        memory_id=memory_id,
     )
-    iam.attach_role_policy(
-        RoleName=role_name,
-        PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
-    )
-    _wait(12)
-    return role_arn
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -238,12 +156,8 @@ def main():
     args = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    session = u.get_session()
-    account = u.get_account(session)
-    bucket  = u.code_bucket_name(account, REGION)
-
     if args.dry_run:
-        print(f"Dry run (prefix={prefix}, account={account})")
+        print(f"Dry run (prefix={prefix})")
         if not args.skip_memory:
             print(f"  would create Memory: {prefix}CapstoneMemory")
         for name in [f"{prefix}_researcher", f"{prefix}_analyzer",
@@ -251,6 +165,9 @@ def main():
             print(f"  would create runtime: {name}  (len={len(name)})")
         return
 
+    session = u.get_session()
+    account = u.get_account(session)
+    bucket  = u.code_bucket_name(account, REGION)
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam",                       region_name=REGION)
     s3c = session.client("s3",                        region_name=REGION)
@@ -277,7 +194,7 @@ def main():
     arns: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=3) as pool:
         futures = {
-            pool.submit(_deploy_specialist, session, bucket, account, name, folder): name
+            pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
             for name, folder in specialist_defs
         }
         for future in as_completed(futures):
@@ -287,9 +204,8 @@ def main():
 
     # ── Step 3: Orchestrator runtime ──────────────────────────────────────────
     print("=== Step 3: Deploy orchestrator ===")
-    orch_name     = f"{prefix}_orchestrator"
-    orch_role_name = f"agentcore-{prefix}-orchestrator-role"
-    orch_role_arn  = ensure_orchestrator_role(iam, orch_role_name, account, bucket, memory_id)
+    orch_name    = f"{prefix}_orchestrator"
+    orch_role_arn = _get_orchestrator_role(iam, account, prefix, bucket, memory_id)
 
     orch_zip = u.zip_folder(HERE / "orchestrator")
     orch_key = u.upload_code(s3c, bucket, MODULE, orch_name, orch_zip)

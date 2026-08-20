@@ -1,6 +1,15 @@
 """
 Deploy Module 6: dynamic-swarm — 4 AgentCore Runtimes with A2A.
 Specialists: A2A protocol (port 9000). Orchestrator: HTTP (port 8080).
+
+IAM roles (created once per prefix, reused by all specialists):
+  workshop-workshop-agentcore-{prefix}-runtime-role      — A2A specialists
+  workshop-agentcore-{prefix}-orchestrator-role — HTTP orchestrator (+ InvokeAgentRuntime)
+
+Override with env vars to skip role creation (workshop environments):
+  AGENTCORE_RUNTIME_ROLE_ARN
+  AGENTCORE_ORCHESTRATOR_ROLE_ARN
+
 Usage: python deploy.py [--name-prefix m6] [--dry-run]
 """
 import argparse, sys
@@ -11,18 +20,16 @@ SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
 import deploy_utils as u
 
-REGION = "us-east-1"
+REGION = u.REGION
 MODULE = "m6-dynamic-swarm"
 HERE   = Path(__file__).parent
 
 
-def _deploy_specialist(session, bucket, account, name, folder):
+def _deploy_specialist(session, bucket, account, prefix, name, folder):
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam", region_name=REGION)
     s3  = session.client("s3",  region_name=REGION)
-    role_name = name.replace('_', '-')
-    role_arn = u.ensure_runtime_role(iam, f"agentcore-{role_name}-role",
-                                      account, REGION, bucket)
+    role_arn = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-runtime-role", account, REGION, bucket)
     s3_key   = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
     print(f"  [{name}] uploaded")
     runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn, protocol="A2A")
@@ -42,15 +49,14 @@ def main():
     m6_names = {s: f"{prefix}_{s}" for s in ['researcher', 'analyst', 'writer']}
     orch_name  = f"{prefix}_orchestrator"
 
-    session = u.get_session()
-    account = u.get_account(session)
-    bucket  = u.code_bucket_name(account, REGION)
-
     if args.dry_run:
         for n in list(m6_names.values()) + [orch_name]:
             print(f"  would create: {n:<25} protocol={'HTTP' if n == orch_name else 'A2A'}")
         return
 
+    session = u.get_session()
+    account = u.get_account(session)
+    bucket  = u.code_bucket_name(account, REGION)
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam", region_name=REGION)
     s3c = session.client("s3",  region_name=REGION)
@@ -59,29 +65,30 @@ def main():
 
     specialist_defs = [
         (m6_names["researcher"], HERE / "specialists/researcher"),
-        (m6_names["analyst"], HERE / "specialists/analyst"),
-        (m6_names["writer"], HERE / "specialists/writer"),
+        (m6_names["analyst"],    HERE / "specialists/analyst"),
+        (m6_names["writer"],     HERE / "specialists/writer"),
     ]
 
     print("=== Step 1: Deploy A2A specialists in parallel ===")
     arns: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futures = {pool.submit(_deploy_specialist, session, bucket, account, name, folder): name
+        futures = {pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
                    for name, folder in specialist_defs}
         for future in as_completed(futures):
             name, _, arn = future.result()
             arns[name] = arn
 
     print("\n=== Step 2: Deploy HTTP orchestrator ===")
-    orch_role = u.ensure_runtime_role(iam, f"agentcore-{prefix}-orchestrator-role",
+    orch_role = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-orchestrator-role",
                                        account, REGION, bucket, can_invoke_runtimes=True)
     orch_zip  = u.zip_folder(HERE / "orchestrator")
     orch_key  = u.upload_code(s3c, bucket, MODULE, orch_name, orch_zip)
     print(f"  [{orch_name}] uploaded")
-    orch_id, _ = u.create_runtime(ctl, orch_name, bucket, orch_key, orch_role,
-        env_vars={
-            "RESEARCHER_RUNTIME_ARN": arns[m6_names["researcher"]], "ANALYST_RUNTIME_ARN": arns[m6_names["analyst"]], "WRITER_RUNTIME_ARN": arns[m6_names["writer"]]
-        })
+    orch_id, _ = u.create_runtime(ctl, orch_name, bucket, orch_key, orch_role, env_vars={
+        "RESEARCHER_RUNTIME_ARN": arns[m6_names["researcher"]],
+        "ANALYST_RUNTIME_ARN":    arns[m6_names["analyst"]],
+        "WRITER_RUNTIME_ARN":     arns[m6_names["writer"]],
+    })
     print(f"  [{orch_name}] creating HTTP runtime...")
     orch_arn = u.wait_ready(ctl, orch_id)
     print(f"  [{orch_name}] READY: {orch_arn}")

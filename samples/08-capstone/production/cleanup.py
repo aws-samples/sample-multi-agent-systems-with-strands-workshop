@@ -29,7 +29,7 @@ SHARED = Path(__file__).parent.parent.parent / "shared"
 sys.path.insert(0, str(SHARED))
 import deploy_utils as u
 
-REGION = "us-east-1"
+REGION = u.REGION
 MODULE = "m8-capstone"
 
 
@@ -76,22 +76,16 @@ def main():
     args = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    session = u.get_session()
-    account = u.get_account(session)
-    bucket  = u.code_bucket_name(account, REGION)
-
-    # Runtime names use underscores; IAM names use dashes
     runtime_names = [
         f"{prefix}_researcher",
         f"{prefix}_analyzer",
         f"{prefix}_criticref",
         f"{prefix}_orchestrator",
     ]
-    role_names = [f"agentcore-{n.replace('_', '-')}-role" for n in runtime_names[:-1]]
-    role_names.append(f"agentcore-{prefix}-orchestrator-role")
-
-    print(f"\nCleanup for prefix '{prefix}' in account {account}")
-    print("=" * 60)
+    role_names = [
+        f"workshop-agentcore-{prefix}-runtime-role",
+        f"workshop-agentcore-{prefix}-orchestrator-role",
+    ]
 
     if args.dry_run:
         print("[DRY RUN] Would delete:")
@@ -101,8 +95,15 @@ def main():
             print(f"  IAM role: {role}")
         if not args.skip_memory:
             print(f"  Memory:   name starts with '{prefix}CapstoneMemory'")
-        print(f"  S3:       s3://{bucket}/{MODULE}/")
+        print(f"  S3:       s3://bedrock-agentcore-deploy-<ACCOUNT>-{REGION}/{MODULE}/")
         return
+
+    session = u.get_session()
+    account = u.get_account(session)
+    bucket  = u.code_bucket_name(account, REGION)
+
+    print(f"\nCleanup for prefix '{prefix}' in account {account}")
+    print("=" * 60)
 
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam",                       region_name=REGION)

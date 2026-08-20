@@ -1,17 +1,25 @@
 """
 Shared utilities for boto3-based AgentCore Runtime deployment.
 
-Used by deploy.py and cleanup.py in multi-runtime modules (07, 08).
+Used by deploy.py and cleanup.py in multi-runtime modules (03-08).
 API-verified: create_agent_runtime with codeConfiguration, PYTHON_3_13, PUBLIC network.
+
+IAM role resolution order (for ensure_runtime_role):
+  1. AGENTCORE_RUNTIME_ROLE_ARN / AGENTCORE_ORCHESTRATOR_ROLE_ARN env var
+  2. iam:GetRole by role_name (role pre-exists from workshop setup or prior run)
+  3. iam:CreateRole (requires iam:CreateRole — works in self-paced / full-permission accounts)
+
+Workshop Studio: set AGENTCORE_RUNTIME_ROLE_ARN and AGENTCORE_ORCHESTRATOR_ROLE_ARN
+to pre-created role ARNs so deploy.py never needs iam:CreateRole.
 """
 import io, json, os, tempfile, threading, time, zipfile
-
-# Serialize pip calls across threads — pip._internal is not thread-safe
-_PIP_LOCK = threading.Lock()
-
 from pathlib import Path
 
 import boto3
+import botocore.exceptions
+
+# Serialize pip calls across threads — pip._internal is not thread-safe
+_PIP_LOCK = threading.Lock()
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 
@@ -41,23 +49,12 @@ def code_bucket_name(account: str, region: str = REGION) -> str:
 
 
 def ensure_s3_bucket(s3_client, bucket: str) -> str:
+    """Get or create the code bucket. Block-public-access and SSE-S3 are AWS
+    defaults for all new buckets since 2023 — no explicit calls needed."""
     try:
         s3_client.head_bucket(Bucket=bucket)
     except Exception:
         s3_client.create_bucket(Bucket=bucket)
-        s3_client.put_public_access_block(
-            Bucket=bucket,
-            PublicAccessBlockConfiguration=dict(
-                BlockPublicAcls=True, IgnorePublicAcls=True,
-                BlockPublicPolicy=True, RestrictPublicBuckets=True,
-            ),
-        )
-        s3_client.put_bucket_encryption(
-            Bucket=bucket,
-            ServerSideEncryptionConfiguration={
-                "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-            },
-        )
         print(f"  Created S3 bucket: {bucket}")
     return bucket
 
@@ -116,13 +113,32 @@ def ensure_runtime_role(
     bucket: str,
     can_invoke_runtimes: bool = False,
     specialist_arns: list = None,
+    memory_id: str = None,
 ) -> str:
     """Get or create an IAM execution role for an AgentCore runtime.
 
+    Resolution order:
+      1. AGENTCORE_ORCHESTRATOR_ROLE_ARN / AGENTCORE_RUNTIME_ROLE_ARN env var
+         (workshop pre-created role — no IAM calls needed)
+      2. iam:GetRole by role_name (role already exists from a previous run)
+      3. iam:CreateRole (requires iam:CreateRole permission)
+
     can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime.
-    specialist_arns limits the grant to those specific ARNs; omit only when
-    the set of runtimes is not known at deploy time (falls back to account-wide).
+    memory_id adds AgentCore Memory data-plane permissions for that memory resource.
     """
+    # 1. Env var override — no IAM calls needed (workshop pre-created roles)
+    env_var = "AGENTCORE_ORCHESTRATOR_ROLE_ARN" if can_invoke_runtimes else "AGENTCORE_RUNTIME_ROLE_ARN"
+    env_arn = os.environ.get(env_var)
+    if env_arn:
+        return env_arn
+
+    # 2. Role may already exist (workshop setup or prior deploy run)
+    try:
+        return iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
+    except iam_client.exceptions.NoSuchEntityException:
+        pass
+
+    # 3. Create the role
     trust = json.dumps({
         "Version": "2012-10-17",
         "Statement": [{
@@ -132,15 +148,26 @@ def ensure_runtime_role(
         }],
     })
     try:
-        return iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
-    except iam_client.exceptions.NoSuchEntityException:
-        pass
-
-    role_arn = iam_client.create_role(
-        RoleName=role_name,
-        AssumeRolePolicyDocument=trust,
-        Description="Execution role for AgentCore Runtime",
-    )["Role"]["Arn"]
+        role_arn = iam_client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=trust,
+            Description="Execution role for AgentCore Runtime",
+        )["Role"]["Arn"]
+    except botocore.exceptions.ClientError as e:
+        code = e.response["Error"]["Code"]
+        if code == "AccessDenied" or "iam:CreateRole" in str(e):
+            raise RuntimeError(
+                f"\nCannot create IAM role '{role_name}': permission denied.\n\n"
+                f"To fix this, set the {env_var} environment variable to a pre-existing\n"
+                f"role ARN that trusts bedrock-agentcore.amazonaws.com:\n\n"
+                f"  export {env_var}=arn:aws:iam::{account}:role/YOUR_ROLE_NAME\n\n"
+                f"The role needs these permissions:\n"
+                f"  bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream\n"
+                f"  logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents\n"
+                f"  s3:GetObject, s3:ListBucket on {bucket}\n"
+                + ("  bedrock-agentcore:InvokeAgentRuntime\n" if can_invoke_runtimes else "")
+            ) from e
+        raise
 
     statements = [
         {
@@ -172,6 +199,20 @@ def ensure_runtime_role(
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
             "Resource": resource,
+        })
+    if memory_id:
+        statements.append({
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateEvent",
+                "bedrock-agentcore:GetEvent",
+                "bedrock-agentcore:ListEvents",
+                "bedrock-agentcore:DeleteEvent",
+                "bedrock-agentcore:RetrieveMemoryRecords",
+                "bedrock-agentcore:ListMemoryRecords",
+                "bedrock-agentcore:GetMemoryRecord",
+            ],
+            "Resource": f"arn:aws:bedrock-agentcore:{region}:{account}:memory/{memory_id}",
         })
 
     iam_client.put_role_policy(
