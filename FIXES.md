@@ -91,7 +91,7 @@ Source: test agents run 2026-08-20. All issues verified by running the code.
 
 ---
 
-## DEL CHAT MULTI-TURNO
+## DEL CHAT MULTI-TURNO (módulos 01-04)
 
 ### FIX-12 · Module 03 — `chat.py` no llama `set_execution_timeout()` → warning en stdout
 - **Archivo:** `samples/03-sequential-chain/chat.py` función `run_chain()` línea ~78
@@ -101,4 +101,69 @@ Source: test agents run 2026-08-20. All issues verified by running the code.
   Module 04 chat.py ya lo tiene correcto (`set_execution_timeout(300)`).
 - **Fix:** Agregar `builder.set_execution_timeout(300)` antes de `builder.build()`.
 - [x] Resuelto
+
+---
+
+## MÓDULO 06 — Dynamic Swarm (IT Incident Response)
+
+### FIX-13 · M06 — `cleanup.py` borra nombres equivocados (researcher/analyst/writer)
+- **Archivo:** `samples/06-dynamic-swarm/production/cleanup.py`
+- **Problema:** `runtime_names` lista researcher/analyst/writer/orchestrator. `deploy.py` crea monitor/network_specialist/db_admin/resolver/orchestrator. Cleanup nunca borra los 4 specialists reales.
+- [x] Resuelto
+
+### FIX-14 · M06 — `invoke.py` envía brief de NovaCart (dominio incorrecto)
+- **Archivo:** `samples/06-dynamic-swarm/production/invoke.py`
+- **Problema:** Payload es el brief de decisión de negocio NovaCart. M06 es IT incident response. Causa HTTP 500/424 en los specialists.
+- [x] Resuelto
+
+### FIX-15 · M06 — `production/main.py` es código del M05 (agentes y dominio incorrectos)
+- **Archivo:** `samples/06-dynamic-swarm/production/main.py`
+- **Problema:** Docstring "M5 Production", logger `m5-dynamic-swarm`, usa researcher/analyst/writer con mock_tools NovaCart. Artefacto stale del M05.
+- [x] Resuelto — reescrito como IT incident response Swarm (monitor/network_specialist/db_admin/resolver)
+
+### FIX-16 · M06 — Notebook celda `255048da`: `node_timeout=90s` demasiado agresivo
+- **Archivo:** `samples/06-dynamic-swarm/module-06.ipynb` celda `255048da`
+- **Problema:** `node_timeout=90.0` provoca FAILED en cold start (db_admin tardó 108s). El mismo swarm completa OK por chat.py.
+- [x] Resuelto — aumentado a `node_timeout=180.0`
+
+### FIX-17 · M06 — `production/README.md` referencias a specialists del M05
+- **Archivo:** `samples/06-dynamic-swarm/production/README.md`
+- **Problema:** Files table y sección Deploy listan researcher/analyst/writer y "4 runtimes".
+- [x] Resuelto — corregido a monitor/network_specialist/db_admin/resolver y "5 runtimes"
+
+### FIX-18 · M06 — `README.md` usa `pip` en lugar de `uv`
+- **Archivo:** `samples/06-dynamic-swarm/README.md` línea 75
+- [x] Resuelto
+
+---
+
+## MÓDULO 07 — Agent-as-Tool (Investment Analysis)
+
+### FIX-19 · M07 — `orchestrator/main.py` NameError: `sys` antes de `import sys`
+- **Archivo:** `samples/07-agent-as-tool/production/orchestrator/main.py` línea 31
+- **Problema:** `sys.path = ...` antes de `import sys` → NameError en startup. Invoke falla al 100%.
+- [x] Resuelto — movido `import sys` antes de la asignación
+
+### FIX-20 · M07 — `cleanup.py` borra nombres equivocados (researcher/analyst/synthesizer)
+- **Archivo:** `samples/07-agent-as-tool/production/cleanup.py`
+- **Problema:** `runtime_names` lista researcher/analyst/synthesizer/orchestrator. `deploy.py` crea research/finance/legal/writer/orchestrator. 4 specialists leaked en cada cleanup.
+- [x] Resuelto
+
+### FIX-21 · M07 — `production/main.py` dice "M6 Production" y logger `m6-agent-as-tool`
+- **Archivo:** `samples/07-agent-as-tool/production/main.py`
+- [x] Resuelto — M6 → M7
+
+### FIX-22 · M07 — `README.md` alt-text con nombres del refactor anterior
+- **Archivo:** `samples/07-agent-as-tool/README.md` línea 7
+- **Problema:** researcher_agent/analyzer_agent/synthesizer_agent → research_agent/finance_agent/legal_agent/writer_agent
+- [x] Resuelto
+
+### FIX-23 · M07 — `production/README.md` specialist paths y conteo incorrectos
+- **Archivo:** `samples/07-agent-as-tool/production/README.md`
+- **Problema:** Files table lista researcher/analyst/synthesizer. Dice "4 Runtimes" y "3 A2A specialists". Deploy crea 5 runtimes y 4 specialists.
+- [x] Resuelto
+
+### FIX-24 · M07 — `production/chat.py` `import os` antes del docstring + "Capstone" en descripción
+- **Archivo:** `samples/07-agent-as-tool/production/chat.py`
+- [x] Resuelto — `import os` movido al bloque de imports; descripción corregida
 

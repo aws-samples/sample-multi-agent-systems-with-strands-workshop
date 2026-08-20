@@ -17,7 +17,7 @@ client = boto3.client(
 response = client.invoke_agent_runtime(
     agentRuntimeArn=RUNTIME_ARN,
     runtimeSessionId=str(uuid.uuid4()),
-    payload=json.dumps({"prompt": "NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months."}).encode(),
+    payload=json.dumps({"prompt": "INCIDENT: E-Commerce Checkout Degradation. Checkout API latency 8200ms (baseline 450ms), error rate 12% (HTTP 5xx on /api/checkout), DB connection pool 95% utilized (baseline 40%). Affected: checkout-service, order-api. Started 15 minutes after deployment v2.4.1. Investigate root cause and produce a resolution plan."}).encode(),
     qualifier="DEFAULT",
 )
 

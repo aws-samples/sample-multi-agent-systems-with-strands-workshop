@@ -1,4 +1,4 @@
-"""M6 Production: Agent-as-Tool on AgentCore Runtime.
+"""M7 Production: Agent-as-Tool on AgentCore Runtime.
 Pattern: LLM orchestrator with @tool specialist agents (Python code routing).
 
 Local test:  python main.py
@@ -83,7 +83,7 @@ def invoke(payload, context):
     _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
-    logger.info("session.id=%s module=m6-agent-as-tool", _session_id)
+    logger.info("session.id=%s module=m7-agent-as-tool", _session_id)
     orchestrator = Agent(
         tools=[researcher_agent, analyzer_agent, synthesizer_agent],
         system_prompt=ORCHESTRATOR_PROMPT,

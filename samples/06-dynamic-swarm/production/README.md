@@ -50,7 +50,7 @@ never share conversation history.
 | `../chat.py` | Interactive multi-turn chat — run from the module root folder, not here |
 | `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
 | `orchestrator/main.py` | Orchestrator Runtime code |
-| `specialists/researcher/main.py`, `analyst/`, `writer/` | A2A specialist runtimes |
+| `specialists/monitor/main.py`, `network_specialist/`, `db_admin/`, `resolver/` | A2A specialist runtimes |
 
 ---
 
@@ -64,7 +64,7 @@ python deploy.py --name-prefix m6ws  # custom prefix (max 8 chars)
 python deploy.py --dry-run
 ```
 
-Deploys `4` runtimes: researcher (A2A), analyst (A2A), writer (A2A).
+Deploys `5` runtimes: monitor (A2A), network_specialist (A2A), db_admin (A2A), resolver (A2A), orchestrator (HTTP).
 
 ---
 

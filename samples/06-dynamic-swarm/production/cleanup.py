@@ -2,8 +2,8 @@
 Cleanup Module 6: Dynamic Swarm — delete all AgentCore resources.
 
 Deletes:
-  - 4 runtimes: {prefix}_researcher, _analyst, _writer, _orchestrator
-  - 2 IAM roles: agentcore-{prefix}-runtime-role, agentcore-{prefix}-orchestrator-role
+  - 5 runtimes: {prefix}_monitor, _network_specialist, _db_admin, _resolver, _orchestrator
+  - 2 IAM roles: workshop-agentcore-{prefix}-runtime-role, workshop-agentcore-{prefix}-orchestrator-role
   - S3 objects under m6-dynamic-swarm/
 
 Usage:
@@ -32,9 +32,10 @@ def main():
     prefix = args.name_prefix[:8]
 
     runtime_names = [
-        f"{prefix}_researcher",
-        f"{prefix}_analyst",
-        f"{prefix}_writer",
+        f"{prefix}_monitor",
+        f"{prefix}_network_specialist",
+        f"{prefix}_db_admin",
+        f"{prefix}_resolver",
         f"{prefix}_orchestrator",
     ]
     role_names = [

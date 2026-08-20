@@ -2,9 +2,9 @@
 
 ![Agent-as-Tool Runtime architecture](./architecture.png)
 
-Deploy Pattern 5 to Amazon Bedrock AgentCore: 4 Runtimes where the LLM orchestrator treats each specialist as a `@tool` function.
+Deploy Pattern 5 to Amazon Bedrock AgentCore: 5 Runtimes where the LLM orchestrator treats each specialist as a `@tool` function.
 
-**Pattern:** LLM orchestrator (HTTP) delegates to three A2A specialists by calling them as tools. The LLM decides routing order; Python code does not hardcode the sequence.
+**Pattern:** LLM orchestrator (HTTP) delegates to four A2A specialists by calling them as tools. The LLM decides routing order; Python code does not hardcode the sequence.
 
 **Strands primitive:** `A2AAgent` wrapped as `@tool` inside `Agent(tools=[...])`
 
@@ -25,15 +25,16 @@ Per-session isolation: orchestrator agents keyed by `session_id` so different us
 
 | File | Purpose |
 |------|---------|
-| `deploy.py` | Deploy 4 runtimes (3 A2A specialists + 1 HTTP orchestrator) |
+| `deploy.py` | Deploy 5 runtimes (4 A2A specialists + 1 HTTP orchestrator) |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
 | `chat.py` | Interactive multi-turn chat in the terminal |
 | `invoke.py` | Single invocation |
 | `orchestrator/main.py` | Orchestrator: `Agent(tools=[a2a_agents])` with retry on cold start |
 | `orchestrator/a2a_utils.py` | SigV4 auth, A2A endpoint construction, retry transport |
-| `specialists/researcher/main.py` | Researcher A2A specialist |
-| `specialists/analyst/main.py` | Analyst A2A specialist |
-| `specialists/synthesizer/main.py` | Synthesizer A2A specialist |
+| `specialists/research/main.py` | Research A2A specialist |
+| `specialists/finance/main.py` | Finance A2A specialist |
+| `specialists/legal/main.py` | Legal A2A specialist |
+| `specialists/writer/main.py` | Writer A2A specialist |
 
 ---
 
@@ -56,7 +57,7 @@ What gets created:
 | S3 bucket | `bedrock-agentcore-deploy-<account>-<region>` |
 | IAM runtime role | `workshop-agentcore-m7-runtime-role` |
 | IAM orchestrator role | `workshop-agentcore-m7-orchestrator-role` |
-| Runtimes | `m7_researcher`, `m7_analyst`, `m7_synthesizer` (A2A) + `m7_orchestrator` (HTTP) |
+| Runtimes | `m7_research`, `m7_finance`, `m7_legal`, `m7_writer` (A2A) + `m7_orchestrator` (HTTP) |
 
 Deployment takes 3–5 minutes. The deploy output prints the orchestrator ARN.
 

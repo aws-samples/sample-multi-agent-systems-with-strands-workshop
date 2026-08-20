@@ -4,7 +4,7 @@
 
 ## Architecture
 
-![Agent-as-Tool: Orchestrator at top, @tool researcher_agent, analyzer_agent, synthesizer_agent below](./architecture.png)
+![Agent-as-Tool: Orchestrator at top, @tool research_agent, finance_agent, legal_agent, writer_agent below](./architecture.png)
 
 
 ## What you'll build

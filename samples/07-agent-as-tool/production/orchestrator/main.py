@@ -28,10 +28,9 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent, tool
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 
-sys.path = [str(Path(__file__).parent)] + __import__('sys').path
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
-
 import sys
+sys.path = [str(Path(__file__).parent)] + sys.path
+from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
 
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()

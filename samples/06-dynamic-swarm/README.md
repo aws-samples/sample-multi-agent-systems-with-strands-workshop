@@ -72,8 +72,8 @@ result = swarm(incident_report)
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## Next

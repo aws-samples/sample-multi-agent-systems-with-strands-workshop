@@ -1,7 +1,7 @@
 """
 Cleanup Module 7: Agent-as-Tool — delete all AgentCore Runtimes and IAM roles.
 
-Deletes the 4 runtimes and 4 IAM roles created by deploy.py,
+Deletes the 5 runtimes and 2 IAM roles created by deploy.py,
 plus the S3 code objects for this module.
 
 Usage:
@@ -29,9 +29,10 @@ def main():
     prefix = args.name_prefix[:8]
 
     runtime_names = [
-        f"{prefix}_researcher",
-        f"{prefix}_analyst",
-        f"{prefix}_synthesizer",
+        f"{prefix}_research",
+        f"{prefix}_finance",
+        f"{prefix}_legal",
+        f"{prefix}_writer",
         f"{prefix}_orchestrator",
     ]
     role_names = [

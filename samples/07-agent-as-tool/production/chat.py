@@ -1,4 +1,3 @@
-import os
 """
 Interactive multi-turn chat with the Agent-as-Tool AgentCore Runtime.
 
@@ -41,6 +40,7 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 import uuid
@@ -132,7 +132,7 @@ def _invoke(client, runtime_arn: str, session_id: str, prompt: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Multi-turn chat with the Capstone AgentCore Runtime",
+        description="Multi-turn chat with the Agent-as-Tool AgentCore Runtime",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
