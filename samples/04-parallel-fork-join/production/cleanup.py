@@ -2,8 +2,8 @@
 Cleanup Module 4: Parallel Fork-Join — delete all AgentCore resources.
 
 Deletes:
-  - 4 runtimes: {prefix}_researcher, _analyzer, _synthesizer, _orchestrator
-  - 2 IAM roles: agentcore-{prefix}-runtime-role, agentcore-{prefix}-orchestrator-role
+  - 3 runtimes: {prefix}_researcher, _analyzer, _synthesizer
+  - 1 IAM role: workshop-agentcore-{prefix}-runtime-role
   - S3 objects under m4-parallel-fork-join/
 
 Usage:
@@ -35,11 +35,9 @@ def main():
         f"{prefix}_researcher",
         f"{prefix}_analyzer",
         f"{prefix}_synthesizer",
-        f"{prefix}_orchestrator",
     ]
     role_names = [
         f"workshop-agentcore-{prefix}-runtime-role",
-        f"workshop-agentcore-{prefix}-orchestrator-role",
     ]
 
     if args.dry_run:

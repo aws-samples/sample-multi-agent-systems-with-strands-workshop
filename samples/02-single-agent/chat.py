@@ -1,4 +1,4 @@
-"""Interactive multi-turn chat for Module 1: Strands Foundations.
+"""Interactive multi-turn chat for Module 2: Single Agent.
 
 The notebook runs the agent one cell at a time. This script wraps the same
 agent in a loop so you can hold a real multi-turn conversation in the terminal —

@@ -1,11 +1,11 @@
-"""Interactive chat for Module 3: Parallel / Fork-Join.
+"""Interactive chat for Module 4: Parallel / Fork-Join.
 
 Uses GraphBuilder parallel topology: the Strands-native way to run agents
 in parallel. No asyncio needed: the SDK handles execution.
 
-    cd samples/03-parallel-fork-join
-    pip install -r requirements.txt
-    python chat.py
+    cd samples/04-parallel-fork-join
+    uv pip install -r requirements.txt
+    uv run python chat.py
 
 Model options (pass model= to each Agent to switch):
     from strands.models import BedrockModel

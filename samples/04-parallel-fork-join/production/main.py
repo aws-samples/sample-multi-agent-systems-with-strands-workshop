@@ -43,7 +43,7 @@ def invoke(payload, context):
     # OTEL session propagation
     _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _token = _ctx.attach(_baggage.set_baggage("session.id", _session_id))
-    logger.info("session.id=%s module=m3-parallel-fork-join", _session_id)
+    logger.info("session.id=%s module=m4-parallel-fork-join", _session_id)
 
     builder = GraphBuilder()
     builder.add_node(researcher,  "researcher")

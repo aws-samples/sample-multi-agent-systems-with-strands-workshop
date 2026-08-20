@@ -17,7 +17,7 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphB
 |------|---------|
 | `module-04.ipynb` | Step-by-step notebook: setup → research → fork → join → synthesize → metrics |
 | `chat.py` | Run the parallel pipeline interactively |
-| `requirements.txt` | `strands-agents>=1.52.0`, `nest-asyncio>=1.6.0` |
+| `requirements.txt` | `strands-agents>=1.52.0` |
 
 ## Key concepts
 

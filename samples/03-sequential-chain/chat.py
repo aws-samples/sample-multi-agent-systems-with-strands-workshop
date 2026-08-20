@@ -74,6 +74,7 @@ def run_chain(brief: str) -> str:
     builder.add_node(synthesizer, "synthesizer")
     builder.add_edge("researcher", "analyst")
     builder.add_edge("analyst",    "synthesizer")
+    builder.set_execution_timeout(300)
 
     result = builder.build()(brief)
 
