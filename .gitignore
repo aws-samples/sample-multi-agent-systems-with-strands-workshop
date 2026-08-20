@@ -47,3 +47,10 @@ npm-debug.log*
 # Jupyter checkpoints
 .ipynb_checkpoints/
 canva-prompts.md
+
+# Claude Code
+.claude/
+
+# draw.io backups
+*.drawio.bkp
+.*.drawio.bkp
