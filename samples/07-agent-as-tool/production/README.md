@@ -140,7 +140,7 @@ python chat.py \
 
 Then paste the brief at the `You:` prompt.
 
-**Note on timing:** The first call takes 3-5 minutes — cold start loads A2A dependencies
+**Note on timing:** The first call takes 3-5 minutes. Cold start loads A2A dependencies
 and the chain calls 3 specialist runtimes. Subsequent turns in the same session are faster
 (container warm, agent history preserved via SlidingWindowConversationManager).
 
@@ -152,7 +152,7 @@ and the chain calls 3 specialist runtimes. Subsequent turns in the same session 
 # Step 1: Reset local config (does NOT touch AWS)
 agentcore remove all -y
 
-# Step 2: Apply teardown — removes the Runtime and ECR image from AWS
+# Step 2: Apply teardown. Removes the Runtime and ECR image from AWS.
 agentcore deploy
 ```
 

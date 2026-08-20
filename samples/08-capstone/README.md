@@ -42,7 +42,7 @@ Typical execution: ~50s, ~11K tokens total (measured with Amazon Nova Pro on Ama
 
 ## Deploy to production
 
-Each module from M2 to M7 includes a `production/` folder with the full Amazon Bedrock AgentCore Runtime deployment.
+Modules 03 to 08 each include a `production/` folder with the full Amazon Bedrock AgentCore Runtime deployment.
 
 ```bash
 cd production/
@@ -52,4 +52,4 @@ cat README.md
 ## Prerequisites
 
 - Python 3.10 or higher
-- All previous modules (1–7). Imports tools from `../01-strands-foundations/decision_brief_tools.py`.
+- All previous modules (01–07). Imports tools from `../02-single-agent/decision_brief_tools.py`.

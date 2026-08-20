@@ -54,7 +54,7 @@ never share conversation history.
 | `deploy.py` | Deploy 4 runtimes (specialists A2A + orchestrator HTTP) |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
 | `chat.py` | Interactive multi-turn chat (passes actorId + sessionId) |
-| `invoke.py` | Single invocation — pass orchestrator ARN as argument |
+| `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
 | `orchestrator/main.py` | Orchestrator Runtime code |
 | `specialists/researcher/main.py`, `analyzer/`, `synthesizer/` | A2A specialist runtimes |
 
@@ -70,7 +70,7 @@ python deploy.py --name-prefix m4ws  # custom prefix (max 8 chars)
 python deploy.py --dry-run
 ```
 
-Deploys `4` runtimes: researcher (A2A), analyzer (A2A — called 3× in parallel), synthesizer (A2A).
+Deploys `4` runtimes: researcher (A2A), analyzer (A2A, called 3× in parallel), synthesizer (A2A).
 
 ---
 

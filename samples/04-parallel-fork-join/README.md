@@ -9,7 +9,7 @@
 
 ## What you'll build
 
-A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphBuilder` parallel topology, then merges their analyses into a final memo. `GraphBuilder` detects parallelism from edge structure automatically — no threading or async code required.
+A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphBuilder` parallel topology, then merges their analyses into a final memo. `GraphBuilder` detects parallelism from edge structure automatically. No threading or async code required.
 
 ## Files
 
@@ -22,8 +22,8 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphB
 ## Key concepts
 
 - `GraphBuilder`: declares the graph topology; nodes with the same predecessor and no mutual dependency run in parallel automatically
-- Fork: three `add_edge("researcher", "analyzer_x")` calls — SDK dispatches all three simultaneously
-- Join: three `add_edge("analyzer_x", "synthesizer")` calls — synthesizer starts after all three finish
+- Fork: three `add_edge("researcher", "analyzer_x")` calls. SDK dispatches all three simultaneously.
+- Join: three `add_edge("analyzer_x", "synthesizer")` calls. Synthesizer starts after all three finish.
 - `set_execution_timeout(N)`: bounds the total wall-clock time for the graph
 - Wall-clock time ≈ slowest single analyzer (not sum of all three)
 

@@ -6,7 +6,7 @@ Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using th
 
 **Pattern:** Researcher, Analyst, and Writer agents hand off autonomously. The LLM Orchestrator decides routing at runtime.
 
-**Strands primitive:** `Agent(tools=[]) — swarm-like routing`
+**Strands primitive:** `Agent(tools=[])` with swarm-like routing
 
 ---
 
@@ -32,7 +32,7 @@ User
  v  sessionId = runtimeSessionId (routes to same container)
  |  actorId   = X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id header
 Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
- |  Agent(tools=[researcher, analyst, writer]) — LLM decides routing order
+ |  Agent(tools=[researcher, analyst, writer]). LLM decides routing order.
   ├──A2A──► Researcher Runtime
   ├──A2A──► Analyst Runtime
   └──A2A──► Writer Runtime
@@ -54,7 +54,7 @@ never share conversation history.
 | `deploy.py` | Deploy 4 runtimes (specialists A2A + orchestrator HTTP) |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
 | `chat.py` | Interactive multi-turn chat (passes actorId + sessionId) |
-| `invoke.py` | Single invocation — pass orchestrator ARN as argument |
+| `invoke.py` | Single invocation. Pass orchestrator ARN as argument. |
 | `orchestrator/main.py` | Orchestrator Runtime code |
 | `specialists/researcher/main.py`, `analyst/`, `writer/` | A2A specialist runtimes |
 
