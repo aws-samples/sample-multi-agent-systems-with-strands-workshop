@@ -116,7 +116,8 @@ def make_a2a_config(actor_id: str = "default-user", region: str = REGION) -> Cli
     https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/
     """
     auth   = AgentCoreA2AAuth(actor_id=actor_id, region=region)
-    client = httpx.AsyncClient(auth=auth, timeout=300)
+    transport = httpx.AsyncHTTPTransport(retries=3)
+    client = httpx.AsyncClient(auth=auth, timeout=300, transport=transport)
     return ClientConfig(httpx_client=client, streaming=True)
 
 

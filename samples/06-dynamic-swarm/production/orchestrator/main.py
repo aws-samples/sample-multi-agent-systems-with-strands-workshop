@@ -114,11 +114,25 @@ def _get_orchestrator(sid: str) -> Agent:
 
 @app.entrypoint
 def invoke(payload, context):
+    import time
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
     sid, _ = _current_session()
-    return str(_get_orchestrator(sid)(brief)).strip()
+    last_error = None
+    for attempt in range(3):
+        try:
+            result_str = str(_get_orchestrator(sid)(brief)).strip()
+            if "Agent execution failed" in result_str:
+                raise RuntimeError(f"Agent failed (cold start?): {result_str[:200]}")
+            return result_str
+        except Exception as exc:
+            last_error = exc
+            _orchestrators.pop(sid, None)  # clear stale cache
+            logger.warning("Attempt %d failed: %s — retrying in %ds", attempt+1, exc, 10*(attempt+1))
+            if attempt < 2:
+                time.sleep(10 * (attempt + 1))
+    raise last_error
 
 if __name__ == "__main__":
     app.run()

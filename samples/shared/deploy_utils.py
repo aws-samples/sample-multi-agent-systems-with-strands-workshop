@@ -127,19 +127,13 @@ def ensure_runtime_role(
     can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime.
     memory_id adds AgentCore Memory data-plane permissions for that memory resource.
     """
-    # 1. Env var override — no IAM calls needed (workshop pre-created roles)
+    # 1. Env var override — skip all IAM calls (role fully managed externally)
     env_var = "AGENTCORE_ORCHESTRATOR_ROLE_ARN" if can_invoke_runtimes else "AGENTCORE_RUNTIME_ROLE_ARN"
     env_arn = os.environ.get(env_var)
     if env_arn:
         return env_arn
 
-    # 2. Role may already exist (workshop setup or prior deploy run)
-    try:
-        return iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
-    except iam_client.exceptions.NoSuchEntityException:
-        pass
-
-    # 3. Create the role
+    # 2. Get or create the role shell (trust policy only, no inline policy yet)
     trust = json.dumps({
         "Version": "2012-10-17",
         "Statement": [{
@@ -148,31 +142,31 @@ def ensure_runtime_role(
             "Action": "sts:AssumeRole",
         }],
     })
+    newly_created = False
     try:
-        role_arn = iam_client.create_role(
-            RoleName=role_name,
-            AssumeRolePolicyDocument=trust,
-            Description="Execution role for AgentCore Runtime",
-        )["Role"]["Arn"]
-    except botocore.exceptions.ClientError as e:
-        code = e.response["Error"]["Code"]
-        if code == "EntityAlreadyExists":
-            # Another thread created the role concurrently — just get the ARN
-            return iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
-        if code == "AccessDenied" or "iam:CreateRole" in str(e):
-            raise RuntimeError(
-                f"\nCannot create IAM role '{role_name}': permission denied.\n\n"
-                f"To fix this, set the {env_var} environment variable to a pre-existing\n"
-                f"role ARN that trusts bedrock-agentcore.amazonaws.com:\n\n"
-                f"  export {env_var}=arn:aws:iam::{account}:role/YOUR_ROLE_NAME\n\n"
-                f"The role needs these permissions:\n"
-                f"  bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream\n"
-                f"  logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents\n"
-                f"  s3:GetObject, s3:ListBucket on {bucket}\n"
-                + ("  bedrock-agentcore:InvokeAgentRuntime\n" if can_invoke_runtimes else "")
-            ) from e
-        raise
+        role_arn = iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
+    except iam_client.exceptions.NoSuchEntityException:
+        try:
+            role_arn = iam_client.create_role(
+                RoleName=role_name,
+                AssumeRolePolicyDocument=trust,
+                Description="Execution role for AgentCore Runtime",
+            )["Role"]["Arn"]
+            newly_created = True
+        except botocore.exceptions.ClientError as e:
+            code = e.response["Error"]["Code"]
+            if code == "EntityAlreadyExists":
+                role_arn = iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
+            elif code == "AccessDenied" or "iam:CreateRole" in str(e):
+                raise RuntimeError(
+                    f"\nCannot create IAM role '{role_name}': permission denied.\n\n"
+                    f"Set the {env_var} environment variable to a pre-existing role ARN:\n"
+                    f"  export {env_var}=arn:aws:iam::{account}:role/YOUR_ROLE_NAME\n"
+                ) from e
+            else:
+                raise
 
+    # 3. Always apply the inline policy (idempotent — put_role_policy overwrites)
     statements = [
         {
             "Effect": "Allow",
@@ -224,12 +218,16 @@ def ensure_runtime_role(
         PolicyName="agentcore-runtime-policy",
         PolicyDocument=json.dumps({"Version": "2012-10-17", "Statement": statements}),
     )
-    iam_client.attach_role_policy(
-        RoleName=role_name,
-        PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
-    )
+    try:
+        iam_client.attach_role_policy(
+            RoleName=role_name,
+            PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
+        )
+    except iam_client.exceptions.LimitExceededException:
+        pass  # Already attached
 
-    _wait(12)
+    if newly_created:
+        _wait(12)
     return role_arn
 
 

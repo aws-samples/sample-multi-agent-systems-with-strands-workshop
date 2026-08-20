@@ -50,15 +50,29 @@ def _get_pipeline(sid, aid):
 
 @app.entrypoint
 def invoke(payload, context):
+    import time
     brief = payload.get("prompt", payload) if isinstance(payload, dict) else payload
     if not brief:
         raise ValueError("Missing required field: prompt")
     sid, aid = _current_session()
-    result = _get_pipeline(sid, aid).build()(brief)
-    for node in reversed(result.execution_order):
-        if node.node_id == "critic_refiner":
-            return str(node.result).strip()
-    return str(result).strip()
+    last_error = None
+    for attempt in range(3):
+        try:
+            result = _get_pipeline(sid, aid).build()(brief)
+            result_str = str(result).strip()
+            if not result.execution_order or "Agent execution failed" in result_str:
+                raise RuntimeError(f"Pipeline failed (cold start?): {result_str[:200]}")
+            for node in reversed(result.execution_order):
+                if node.node_id == "critic_refiner":
+                    return str(node.result).strip()
+            return str(result).strip()
+        except Exception as exc:
+            last_error = exc
+            _pipelines.pop(sid, None)
+            logger.warning("Attempt %d failed: %s — retrying in %ds", attempt+1, exc, 10*(attempt+1))
+            if attempt < 2:
+                time.sleep(10 * (attempt + 1))
+    raise last_error
 
 if __name__ == "__main__":
     app.run()
