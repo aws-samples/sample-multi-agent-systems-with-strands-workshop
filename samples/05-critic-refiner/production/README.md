@@ -26,16 +26,7 @@ Deploy the Pattern 3: Critic-Refiner to Amazon Bedrock AgentCore Runtime using t
 
 ## Architecture
 
-```
-User
- |
- v  sessionId = runtimeSessionId (routes to same container)
- |  actorId   = X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id header
-Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
- |  GraphBuilder sequential: `researcher → critic_refiner`
-  ├──A2A──► Researcher Runtime
-  └──A2A──► Critic-Refiner Runtime (Writer↔Critic loop internal)
-```
+![Pattern 3: Critic-Refiner architecture](./architecture.png)
 
 **Specialists** run on port 9000 using the A2A protocol (`serve_a2a`).
 **Orchestrator** receives calls from `chat.py` via `invoke_agent_runtime` (HTTP),

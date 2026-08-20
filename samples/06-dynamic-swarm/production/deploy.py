@@ -1,9 +1,13 @@
 """
-Deploy Module 6: dynamic-swarm — 4 AgentCore Runtimes with A2A.
-Specialists: A2A protocol (port 9000). Orchestrator: HTTP (port 8080).
+Deploy Module 6: Dynamic Swarm — 4 A2A specialists + 1 HTTP orchestrator.
 
-IAM roles (created once per prefix, reused by all specialists):
-  workshop-workshop-agentcore-{prefix}-runtime-role      — A2A specialists
+Specialists (A2A, port 9000):  monitor, network_specialist, db_admin, resolver
+Orchestrator (HTTP, port 8080): LLM Agent that simulates swarm routing via tools
+
+Use case: IT incident response — path emerges based on findings.
+
+IAM roles:
+  workshop-agentcore-{prefix}-runtime-role      — A2A specialists
   workshop-agentcore-{prefix}-orchestrator-role — HTTP orchestrator (+ InvokeAgentRuntime)
 
 Override with env vars to skip role creation (workshop environments):
@@ -46,12 +50,12 @@ def main():
     args   = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    m6_names = {s: f"{prefix}_{s}" for s in ['researcher', 'analyst', 'writer']}
-    orch_name  = f"{prefix}_orchestrator"
+    specialists = {s: f"{prefix}_{s}" for s in ['monitor', 'network_specialist', 'db_admin', 'resolver']}
+    orch_name   = f"{prefix}_orchestrator"
 
     if args.dry_run:
-        for n in list(m6_names.values()) + [orch_name]:
-            print(f"  would create: {n:<25} protocol={'HTTP' if n == orch_name else 'A2A'}")
+        for n in list(specialists.values()) + [orch_name]:
+            print(f"  would create: {n:<30} protocol={'HTTP' if n == orch_name else 'A2A'}")
         return
 
     session = u.get_session()
@@ -64,14 +68,15 @@ def main():
     print(f"Code bucket: s3://{bucket}\n")
 
     specialist_defs = [
-        (m6_names["researcher"], HERE / "specialists/researcher"),
-        (m6_names["analyst"],    HERE / "specialists/analyst"),
-        (m6_names["writer"],     HERE / "specialists/writer"),
+        (specialists["monitor"],            HERE / "specialists/monitor"),
+        (specialists["network_specialist"], HERE / "specialists/network_specialist"),
+        (specialists["db_admin"],           HERE / "specialists/db_admin"),
+        (specialists["resolver"],           HERE / "specialists/resolver"),
     ]
 
     print("=== Step 1: Deploy A2A specialists in parallel ===")
     arns: dict[str, str] = {}
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
                    for name, folder in specialist_defs}
         for future in as_completed(futures):
@@ -81,13 +86,13 @@ def main():
     print("\n=== Step 2: Deploy HTTP orchestrator ===")
     orch_role = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-orchestrator-role",
                                        account, REGION, bucket, can_invoke_runtimes=True)
-    orch_zip  = u.zip_folder(HERE / "orchestrator")
-    orch_key  = u.upload_code(s3c, bucket, MODULE, orch_name, orch_zip)
+    orch_key  = u.upload_code(s3c, bucket, MODULE, orch_name, u.zip_folder(HERE / "orchestrator"))
     print(f"  [{orch_name}] uploaded")
     orch_id, _ = u.create_runtime(ctl, orch_name, bucket, orch_key, orch_role, env_vars={
-        "RESEARCHER_RUNTIME_ARN": arns[m6_names["researcher"]],
-        "ANALYST_RUNTIME_ARN":    arns[m6_names["analyst"]],
-        "WRITER_RUNTIME_ARN":     arns[m6_names["writer"]],
+        "MONITOR_RUNTIME_ARN":           arns[specialists["monitor"]],
+        "NETWORK_SPECIALIST_RUNTIME_ARN": arns[specialists["network_specialist"]],
+        "DB_ADMIN_RUNTIME_ARN":          arns[specialists["db_admin"]],
+        "RESOLVER_RUNTIME_ARN":          arns[specialists["resolver"]],
     })
     print(f"  [{orch_name}] creating HTTP runtime...")
     orch_arn = u.wait_ready(ctl, orch_id)
@@ -98,7 +103,6 @@ def main():
     with open(".runtime_arn", "w", encoding="utf-8") as _f:
         _f.write(orch_arn)
     print(f"Invoke:  python invoke.py {orch_arn}")
-    print(f"Chat:    python chat.py --actor-id <id> --runtime-arn {orch_arn}")
     print(f"Cleanup: python cleanup.py --name-prefix {prefix}")
 
 

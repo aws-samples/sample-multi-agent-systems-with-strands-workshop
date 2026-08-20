@@ -11,15 +11,7 @@ Deploy Pattern 1 (Sequential Chain) to Amazon Bedrock AgentCore Runtime using th
 
 ## Architecture
 
-```
-User
- |
-chain.py  (local Python script — Strands GraphBuilder)
- |  A2AAgent (SigV4, port 9000)
- ├──A2A──► Researcher Runtime
- ├──A2A──► Analyst Runtime
- └──A2A──► Synthesizer Runtime
-```
+![Pattern 1: Sequential Chain architecture](./architecture.png)
 
 **Specialists** run as AgentCore Runtimes on port 9000 using the A2A protocol.  
 **Coordination** is handled by `chain.py` — a local Python script using `GraphBuilder` with `A2AAgent` nodes.

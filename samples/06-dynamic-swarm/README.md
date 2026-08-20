@@ -8,25 +8,6 @@
 
 ![Dynamic Swarm: Monitor, Network Specialist, DB Admin, Resolver — autonomous handoffs, no fixed routing](./architecture.png)
 
-```
-Incident Report
-      │
-      ▼
-┌──────────────┐   SHARED CONTEXT / WORKING MEMORY
-│   Monitor    │  ← entry point; triages, classifies, routes
-└──────┬───────┘
-       │  handoff_to_agent("network_specialist" | "db_admin")  ← autonomous
-       ▼
-┌───────────────────┐      ┌──────────────┐
-│ Network Specialist│  ←→  │   DB Admin   │  ← specialists may hand off to each other
-└───────────────────┘      └──────────────┘
-       │  handoff_to_agent("resolver")            ← autonomous
-       ▼
-┌──────────────┐
-│   Resolver   │  ← synthesizes findings, produces resolution plan
-└──────────────┘
-```
-
 The path is not programmed — it emerges based on agent `description` fields and what each agent decides.
 
 ## What you'll build

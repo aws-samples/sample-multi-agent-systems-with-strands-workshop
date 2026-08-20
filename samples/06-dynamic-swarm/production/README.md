@@ -30,20 +30,10 @@ Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using th
 
 ## Architecture
 
-```
-User
- |
- v  sessionId = runtimeSessionId (routes to same container)
- |  actorId   = X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id header
-Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
- |  Agent(tools=[researcher, analyst, writer]). LLM decides routing order.
-  ├──A2A──► Researcher Runtime
-  ├──A2A──► Analyst Runtime
-  └──A2A──► Writer Runtime
-```
+![Pattern 4: Dynamic Swarm architecture](./architecture.png)
 
 **Specialists** run on port 9000 using the A2A protocol (`serve_a2a`).
-**Orchestrator** receives calls from `chat.py` via `invoke_agent_runtime` (HTTP),
+**Orchestrator** receives calls via `invoke_agent_runtime` (HTTP),
 then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
 
 Per-session isolation: orchestrators keyed by `session_id` so different users

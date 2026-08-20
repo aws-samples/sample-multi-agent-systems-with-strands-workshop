@@ -12,19 +12,7 @@ Deploy Pattern 5 to Amazon Bedrock AgentCore: 4 Runtimes where the LLM orchestra
 
 ## Architecture
 
-```
-User
- |
- v  sessionId = runtimeSessionId (routes to same container)
- |
-Orchestrator Runtime  (HTTP, port 8080, BedrockAgentCoreApp)
- |  Agent(tools=[researcher_agent, analyst_agent, synthesizer_agent])
- |  LLM decides when and in what order to call each tool
-  |
-  ├── @tool researcher_agent ──A2A──► Researcher Runtime  (port 9000)
-  ├── @tool analyst_agent    ──A2A──► Analyst Runtime     (port 9000)
-  └── @tool synthesizer_agent ─A2A──► Synthesizer Runtime (port 9000)
-```
+![Agent-as-Tool Runtime architecture](./architecture.png)
 
 **Specialists** run on port 9000 using the [A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html) (`serve_a2a`).
 **Orchestrator** receives calls via `invoke_agent_runtime` (HTTP), then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
