@@ -1,19 +1,24 @@
 """
-Deploy Module 5: critic-refiner — 3 AgentCore Runtimes with A2A.
-Specialists: A2A protocol (port 9000). Orchestrator: HTTP (port 8080).
+Deploy Module 5: Critic-Refiner — 1 A2A specialist runtime.
 
-IAM roles (created once per prefix, reused by all specialists):
-  workshop-workshop-agentcore-{prefix}-runtime-role      — A2A specialists
-  workshop-agentcore-{prefix}-orchestrator-role — HTTP orchestrator (+ InvokeAgentRuntime)
+Architecture:
+  critic_refiner  — A2A specialist (port 9000, serve_a2a)
+                    Contains the Writer↔Critic GraphBuilder loop internally.
 
-Override with env vars to skip role creation (workshop environments):
+No orchestrator runtime is deployed. The specialist is called directly
+by chain.py using A2AAgent.
+
+AWS AgentCore A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
+
+IAM role (created once per prefix):
+  workshop-agentcore-{prefix}-runtime-role  — A2A specialist (Bedrock, Logs, S3)
+
+Override with env var to skip role creation (workshop environments):
   AGENTCORE_RUNTIME_ROLE_ARN
-  AGENTCORE_ORCHESTRATOR_ROLE_ARN
 
 Usage: python deploy.py [--name-prefix m5] [--dry-run]
 """
 import argparse, sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 SHARED = Path(__file__).parent.parent.parent / "shared"
@@ -25,20 +30,6 @@ MODULE = "m5-critic-refiner"
 HERE   = Path(__file__).parent
 
 
-def _deploy_specialist(session, bucket, account, prefix, name, folder):
-    ctl = session.client("bedrock-agentcore-control", region_name=REGION)
-    iam = session.client("iam", region_name=REGION)
-    s3  = session.client("s3",  region_name=REGION)
-    role_arn = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-runtime-role", account, REGION, bucket)
-    s3_key   = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
-    print(f"  [{name}] uploaded")
-    runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn, protocol="A2A")
-    print(f"  [{name}] creating A2A runtime...")
-    runtime_arn = u.wait_ready(ctl, runtime_id)
-    print(f"  [{name}] READY: {runtime_arn}")
-    return name, runtime_id, runtime_arn
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name-prefix", default="m5", help="Runtime prefix, max 8 chars")
@@ -46,12 +37,10 @@ def main():
     args   = parser.parse_args()
     prefix = args.name_prefix[:8]
 
-    m5_names = {s: f"{prefix}_{s}" for s in ['researcher', 'critic_refiner']}
-    orch_name  = f"{prefix}_orchestrator"
+    cr_name = f"{prefix}_critic_refiner"
 
     if args.dry_run:
-        for n in list(m5_names.values()) + [orch_name]:
-            print(f"  would create: {n:<25} protocol={'HTTP' if n == orch_name else 'A2A'}")
+        print(f"  would create: {cr_name:<25} protocol=A2A")
         return
 
     session = u.get_session()
@@ -60,43 +49,27 @@ def main():
     ctl = session.client("bedrock-agentcore-control", region_name=REGION)
     iam = session.client("iam", region_name=REGION)
     s3c = session.client("s3",  region_name=REGION)
+
     u.ensure_s3_bucket(s3c, bucket)
     print(f"Code bucket: s3://{bucket}\n")
 
-    specialist_defs = [
-        (m5_names["researcher"],    HERE / "specialists/researcher"),
-        (m5_names["critic_refiner"], HERE / "specialists/critic_refiner"),
-    ]
+    role_arn = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-runtime-role", account, REGION, bucket)
+    s3_key   = u.upload_code(s3c, bucket, MODULE, cr_name, u.zip_folder(HERE / "specialists/critic_refiner"))
+    print(f"  [{cr_name}] uploaded")
 
-    print("=== Step 1: Deploy A2A specialists in parallel ===")
-    arns: dict[str, str] = {}
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = {pool.submit(_deploy_specialist, session, bucket, account, prefix, name, folder): name
-                   for name, folder in specialist_defs}
-        for future in as_completed(futures):
-            name, _, arn = future.result()
-            arns[name] = arn
-
-    print("\n=== Step 2: Deploy HTTP orchestrator ===")
-    orch_role = u.ensure_runtime_role(iam, f"workshop-agentcore-{prefix}-orchestrator-role",
-                                       account, REGION, bucket, can_invoke_runtimes=True)
-    orch_zip  = u.zip_folder(HERE / "orchestrator")
-    orch_key  = u.upload_code(s3c, bucket, MODULE, orch_name, orch_zip)
-    print(f"  [{orch_name}] uploaded")
-    orch_id, _ = u.create_runtime(ctl, orch_name, bucket, orch_key, orch_role, env_vars={
-        "RESEARCHER_RUNTIME_ARN":     arns[m5_names["researcher"]],
-        "CRITIC_REFINER_RUNTIME_ARN": arns[m5_names["critic_refiner"]],
-    })
-    print(f"  [{orch_name}] creating HTTP runtime...")
-    orch_arn = u.wait_ready(ctl, orch_id)
-    print(f"  [{orch_name}] READY: {orch_arn}")
+    runtime_id, _ = u.create_runtime(ctl, cr_name, bucket, s3_key, role_arn, protocol="A2A")
+    print(f"  [{cr_name}] creating A2A runtime...")
+    cr_arn = u.wait_ready(ctl, runtime_id)
+    print(f"  [{cr_name}] READY: {cr_arn}")
 
     print(f"\n=== Deployment complete ===")
-    print(f"Orchestrator ARN: {orch_arn}")
-    with open(".runtime_arn", "w", encoding="utf-8") as _f:
-        _f.write(orch_arn)
-    print(f"Invoke:  python invoke.py {orch_arn}")
-    print(f"Chat:    python chat.py --actor-id <id> --runtime-arn {orch_arn}")
+    print(f"Critic-Refiner ARN: {cr_arn}")
+
+    with open(".env_arns", "w", encoding="utf-8") as _f:
+        _f.write(f"\nexport CRITIC_REFINER_RUNTIME_ARN={cr_arn}\n")
+
+    print(f"\nRun the chain:")
+    print(f"  source .env_arns && python chain.py")
     print(f"Cleanup: python cleanup.py --name-prefix {prefix}")
 
 
