@@ -90,7 +90,7 @@ def main():
         f"\nexport WRITER_RUNTIME_ARN={arns[specialists['writer']]}\n"
         f"export CRITIC_RUNTIME_ARN={arns[specialists['critic']]}\n"
     )
-    with open(".env_arns", "w", encoding="utf-8") as _f:
+    with open(HERE / ".env_arns", "w", encoding="utf-8") as _f:
         _f.write(env_block)
 
     print(f"\nRun the chain:")

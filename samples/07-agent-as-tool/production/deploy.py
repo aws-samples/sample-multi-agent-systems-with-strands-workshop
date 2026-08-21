@@ -100,7 +100,7 @@ def main():
 
     print(f"\n=== Deployment complete ===")
     print(f"Orchestrator ARN: {orch_arn}")
-    with open(".runtime_arn", "w", encoding="utf-8") as _f:
+    with open(HERE / ".runtime_arn", "w", encoding="utf-8") as _f:
         _f.write(orch_arn)
     print(f"Invoke:  python invoke.py {orch_arn}")
     print(f"Cleanup: python cleanup.py --name-prefix {prefix}")

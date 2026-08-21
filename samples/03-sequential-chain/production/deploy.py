@@ -105,7 +105,7 @@ def main():
         f"export ANALYST_RUNTIME_ARN={arns[analyst_name]}\n"
         f"export SYNTHESIZER_RUNTIME_ARN={arns[synthesizer_name]}\n"
     )
-    with open(".env_arns", "w", encoding="utf-8") as _f:
+    with open(HERE / ".env_arns", "w", encoding="utf-8") as _f:
         _f.write(env_block)
 
     print(f"\nRun the chain:")
