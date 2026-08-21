@@ -7,7 +7,7 @@ All four multi-agent patterns combined into one complete pipeline.
 
 ## Architecture
 
-![Decision-Memo System: Orchestrator → parallel_heads (Planner, Researcher, Analyzer 1, Analyzer 2) → program_revisor (Program Revisor ↔ Critic) → Leadership Memo](./architecture.png)
+![Decision-Memo System: Orchestrator delegates to Researcher (P1), parallel Analyzers A/B/C (P2), then Writer↔Critic quality loop (P3)](./architecture.png)
 
 ## Patterns combined
 
@@ -40,17 +40,18 @@ All four multi-agent patterns combined into one complete pipeline.
 ## Run
 
 ```bash
-uv pip install -r requirements.txt
-uv run python chat.py
+pip install -r requirements.txt
+python chat.py
 ```
 
 ## What happens at runtime
 
-1. Orchestrator calls `parallel_heads(brief)` — Planner, Researcher, Analyzer 1, Analyzer 2 run simultaneously via `asyncio.gather`
-2. Orchestrator calls `program_revisor(brief, parallel_findings)` — Program Revisor drafts, Critic evaluates, loop until `APPROVED`
-3. Final approved memo returned
+1. Orchestrator calls `researcher_agent(topic)` — uses business intelligence tools to gather market data
+2. Orchestrator calls `parallel_analyzers(brief, research)` — Analyzers A, B, C run simultaneously via `asyncio.gather`
+3. Orchestrator calls `critic_refiner(brief, analyses)` — `GraphBuilder` Writer↔Critic loop until `APPROVED`
+4. Final approved memo returned
 
-Typical execution: ~120s, ~15K tokens (Claude Sonnet 4 on Amazon Bedrock).
+Typical execution: ~120–180s, ~15K tokens (Claude Sonnet 4 on Amazon Bedrock).
 
 ## Deploy to production
 
