@@ -11,8 +11,6 @@ Deploy Pattern 1 (Sequential Chain) to Amazon Bedrock AgentCore Runtime using th
 
 ## Architecture
 
-![Pattern 1: Sequential Chain architecture](./architecture.png)
-
 **Specialists** run as AgentCore Runtimes on port 9000 using the A2A protocol.  
 **Coordination** is handled by `chain.py` — a local Python script using `GraphBuilder` with `A2AAgent` nodes.
 

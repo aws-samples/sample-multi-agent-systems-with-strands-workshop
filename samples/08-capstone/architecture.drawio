@@ -74,20 +74,7 @@
         </mxCell>
 
         <!-- Orch → 4 agents (fan-out, all blue) -->
-        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#0288D1;strokeWidth=2;" edge="1" parent="1" source="orch" target="planner">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#0288D1;strokeWidth=2;" edge="1" parent="1" source="orch" target="researcher">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#0288D1;strokeWidth=2;" edge="1" parent="1" source="orch" target="ana1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#0288D1;strokeWidth=2;" edge="1" parent="1" source="orch" target="ana2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- parallel_heads box RIGHT SIDE → program_revisor (single clean arrow) -->
+<!-- parallel_heads box RIGHT SIDE → program_revisor (single clean arrow) -->
         <mxCell id="e_ph_pr" value="findings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#B71C1C;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;fontColor=#B71C1C;fontStyle=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="ph_box" target="revisor">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -97,6 +84,9 @@
           <mxGeometry x="250" y="380" width="1000" height="24" as="geometry" />
         </mxCell>
 
+        <mxCell id="e_oph" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;flowAnimation=1;strokeColor=#0288D1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="orch" target="ph_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

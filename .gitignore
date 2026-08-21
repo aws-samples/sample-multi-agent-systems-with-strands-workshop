@@ -54,3 +54,4 @@ canva-prompts.md
 # draw.io backups
 *.drawio.bkp
 .*.drawio.bkp
+**/.*.bkp

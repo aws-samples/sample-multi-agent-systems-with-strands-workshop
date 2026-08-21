@@ -30,8 +30,6 @@ Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using th
 
 ## Architecture
 
-![Pattern 4: Dynamic Swarm architecture](./architecture.png)
-
 **Specialists** run on port 9000 using the A2A protocol (`serve_a2a`).
 **Orchestrator** receives calls via `invoke_agent_runtime` (HTTP),
 then calls specialists via `A2AAgent` with SigV4 auth in isolated threads.
