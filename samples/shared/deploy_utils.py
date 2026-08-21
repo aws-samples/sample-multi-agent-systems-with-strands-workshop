@@ -127,11 +127,18 @@ def ensure_runtime_role(
     can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime.
     memory_id adds AgentCore Memory data-plane permissions for that memory resource.
     """
-    # 1. Env var override — skip all IAM calls (role fully managed externally)
+    # 1. Env var override — skip role creation only if the role actually exists.
+    # After cleanup.py deletes roles, the env var still points to the deleted ARN.
+    # Verify the role exists before trusting the cached value.
     env_var = "AGENTCORE_ORCHESTRATOR_ROLE_ARN" if can_invoke_runtimes else "AGENTCORE_RUNTIME_ROLE_ARN"
     env_arn = os.environ.get(env_var)
     if env_arn:
-        return env_arn
+        try:
+            role_name_from_env = env_arn.rsplit("/", 1)[-1]
+            iam_client.get_role(RoleName=role_name_from_env)
+            return env_arn  # Role exists — use the cached ARN
+        except iam_client.exceptions.NoSuchEntityException:
+            pass  # Role was deleted (cleanup ran) — fall through to recreate it
 
     # 2. Get or create the role shell (trust policy only, no inline policy yet)
     trust = json.dumps({
@@ -227,7 +234,7 @@ def ensure_runtime_role(
         pass  # Already attached
 
     if newly_created:
-        _wait(12)
+        _wait(30)
     return role_arn
 
 
