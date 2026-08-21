@@ -20,4 +20,7 @@ def get_agent():
     return _agent
 
 if __name__ == "__main__":
+    # This file runs on Amazon Bedrock AgentCore Runtime — not locally.
+    # Running it locally starts a server on port 9000 that requires
+    # AgentCore authentication to work. Deploy with deploy.py instead.
     serve_a2a(StrandsA2AExecutor(get_agent()))
