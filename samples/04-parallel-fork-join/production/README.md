@@ -76,6 +76,14 @@ Subsequent calls: 15-30s (warm containers).
 
 ---
 
+## Run from a terminal
+
+```bash
+source .env_arns && python chain.py
+```
+
+---
+
 ## Cleanup
 
 ```bash
