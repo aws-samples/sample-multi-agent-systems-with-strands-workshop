@@ -13,21 +13,20 @@ All four multi-agent patterns combined into one complete pipeline.
 
 | Pattern | Component | Strands API |
 |---------|-----------|-------------|
-| **P2 Parallel heads** | Planner + Researcher + Analyzer 1 + Analyzer 2 run simultaneously | `asyncio.gather` + `invoke_async` |
-| **P3 Critic-Refiner** | Program Revisor drafts → Critic evaluates → loop until APPROVED | `GraphBuilder` + cycle edge |
-| **P5 Agent-as-Tool** | Orchestrator delegates to both tools | `@tool` wrapping sub-pipelines |
-| **P1 Sequential** | Parallel phase completes → Program Revisor synthesizes | Implicit sequencing |
+| **P5 Agent-as-Tool** | Orchestrator delegates to three specialist tools | `@tool` wrapping `Agent` |
+| **P1 Sequential** | Researcher gathers data; passed to analyzers | Python sequence |
+| **P2 Fork-Join** | Analyzers A, B, C run simultaneously | `asyncio.gather` + `invoke_async` |
+| **P3 Critic-Refiner** | Writer drafts memo → Critic approves or requests revision | `GraphBuilder` + cycle edge |
 
 ## Agents
 
 | Agent | Role |
 |-------|------|
-| **Planner** | Creates the analysis plan from the brief |
-| **Researcher** | Gathers market data with business intelligence tools |
-| **Analyzer 1** | Financial analysis of all 3 options (ROI, payback, budget) |
-| **Analyzer 2** | Risk analysis of all 3 options (complexity, mitigations) |
-| **Program Revisor** | Synthesizes all findings into the leadership memo |
-| **Critic** | Quality gate: checks 5 criteria; APPROVED or REVISION NEEDED |
+| **Researcher** | Gathers company data, benchmarks, and competitor intelligence |
+| **Analyzer A/B/C** | Evaluates one option each; all three run in parallel |
+| **Writer** | Drafts the executive leadership memo |
+| **Critic** | Quality gate: APPROVED or REVISION NEEDED |
+| **Orchestrator** | Coordinates the three tools; LLM decides call sequence |
 
 ## Files
 
