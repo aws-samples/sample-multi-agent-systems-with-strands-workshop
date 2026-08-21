@@ -263,28 +263,36 @@ def create_runtime(
         kwargs["environmentVariables"] = env_vars
     if protocol != "HTTP":
         kwargs["protocolConfiguration"] = {"serverProtocol": protocol}
-    try:
-        resp = ctl_client.create_agent_runtime(**kwargs)
-        return resp["agentRuntimeId"], resp["agentRuntimeArn"]
-    except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "ConflictException":
-            existing = list_all_runtimes(ctl_client)
-            runtime_id = existing.get(name)
-            if runtime_id:
-                # Runtime exists — update it with the new code artifact
-                update_kwargs = {
-                    "agentRuntimeId": runtime_id,
-                    "agentRuntimeArtifact": kwargs["agentRuntimeArtifact"],
-                    "roleArn": kwargs["roleArn"],
-                    "networkConfiguration": kwargs["networkConfiguration"],
-                }
-                if env_vars:
-                    update_kwargs["environmentVariables"] = env_vars
-                if protocol != "HTTP":
-                    update_kwargs["protocolConfiguration"] = kwargs["protocolConfiguration"]
-                ctl_client.update_agent_runtime(**update_kwargs)
-                return runtime_id, ctl_client.get_agent_runtime(agentRuntimeId=runtime_id)["agentRuntimeArn"]
-        raise
+    import time as _time
+    for _attempt in range(4):
+        try:
+            resp = ctl_client.create_agent_runtime(**kwargs)
+            return resp["agentRuntimeId"], resp["agentRuntimeArn"]
+        except botocore.exceptions.ClientError as e:
+            code = e.response["Error"]["Code"]
+            msg  = e.response["Error"].get("Message", "")
+            # IAM role propagation delay — retry after brief wait
+            if code == "ValidationException" and "Role validation failed" in msg and _attempt < 3:
+                _time.sleep(15 * (_attempt + 1))
+                continue
+            if code == "ConflictException":
+                existing = list_all_runtimes(ctl_client)
+                runtime_id = existing.get(name)
+                if runtime_id:
+                    # Runtime exists — update it with the new code artifact
+                    update_kwargs = {
+                        "agentRuntimeId": runtime_id,
+                        "agentRuntimeArtifact": kwargs["agentRuntimeArtifact"],
+                        "roleArn": kwargs["roleArn"],
+                        "networkConfiguration": kwargs["networkConfiguration"],
+                    }
+                    if env_vars:
+                        update_kwargs["environmentVariables"] = env_vars
+                    if protocol != "HTTP":
+                        update_kwargs["protocolConfiguration"] = kwargs["protocolConfiguration"]
+                    ctl_client.update_agent_runtime(**update_kwargs)
+                    return runtime_id, ctl_client.get_agent_runtime(agentRuntimeId=runtime_id)["agentRuntimeArn"]
+            raise
 
 
 def wait_ready(ctl_client, runtime_id: str, timeout: int = 600) -> str:

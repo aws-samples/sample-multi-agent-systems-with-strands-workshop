@@ -136,7 +136,18 @@ def _deploy_specialist(session, bucket, account, prefix, name, folder):
     s3_key = u.upload_code(s3, bucket, MODULE, name, u.zip_folder(folder))
     print(f"  [{name}] uploaded → s3://{bucket}/{s3_key}")
 
-    runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn, protocol="A2A")
+    # Retry runtime creation — IAM role propagation can take ~10s after creation
+    for attempt in range(4):
+        try:
+            runtime_id, _ = u.create_runtime(ctl, name, bucket, s3_key, role_arn, protocol="A2A")
+            break
+        except Exception as e:
+            if "Role validation failed" in str(e) and attempt < 3:
+                delay = 15 * (attempt + 1)
+                print(f"  [{name}] IAM role not ready yet, retrying in {delay}s...")
+                _wait(delay)
+            else:
+                raise
     print(f"  [{name}] creating {runtime_id} ...")
     runtime_arn = u.wait_ready(ctl, runtime_id)
     print(f"  [{name}] READY: {runtime_arn}")
