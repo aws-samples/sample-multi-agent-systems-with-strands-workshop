@@ -1,5 +1,5 @@
 """
-Multi-turn production chat for AgentCore Capstone — Decision-Memo System.
+Multi-turn production chat for AgentCore Dynamic Swarm.
 
 Usage:
   python chat.py --actor-id workshop-user-01 --runtime-arn $(cat .runtime_arn)
@@ -36,7 +36,7 @@ def main():
 
     sep = "=" * 60
     print(sep)
-    print("  AgentCore Capstone — Decision-Memo System")
+    print("  AgentCore Dynamic Swarm — Multi-turn Chat")
     print(sep)
     print(f"  Actor ID  : {args.actor_id}")
     print(f"  Session ID: {session_id}")
