@@ -91,8 +91,8 @@ NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot)
 C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 
-First call: 5-10 min (cold start across 4 specialist runtimes).
-Subsequent calls in the same session: 2-4 min (warm containers).
+First call: 1-2 min (cold start).
+Subsequent calls: 15-30s (warm containers).
 
 ---
 
