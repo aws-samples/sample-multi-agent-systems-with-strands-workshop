@@ -33,10 +33,7 @@ from strands.multiagent import GraphBuilder
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 
-REGION          = os.environ.get("AWS_REGION", "us-east-1")
-RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYZER_ARN    = os.environ["ANALYZER_RUNTIME_ARN"]
-SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 DEFAULT_BRIEF = (
     "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "
@@ -58,12 +55,15 @@ def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
 
 def run_chain(brief: str) -> str:
     """Run the fork-join chain and return the synthesizer's final memo."""
-    researcher  = _make_agent(RESEARCHER_ARN,  "researcher",  "Market research specialist.")
-    # Same ANALYZER_ARN used three times — parallel instances of the same specialist
-    analyzer_a  = _make_agent(ANALYZER_ARN, "analyzer_a", "Option A analyst ($19.99/mo).")
-    analyzer_b  = _make_agent(ANALYZER_ARN, "analyzer_b", "Option B analyst ($14.99/mo).")
-    analyzer_c  = _make_agent(ANALYZER_ARN, "analyzer_c", "Option C analyst ($12.99/mo).")
-    synthesizer = _make_agent(SYNTHESIZER_ARN, "synthesizer", "Executive memo writer.")
+    researcher_arn  = os.environ["RESEARCHER_RUNTIME_ARN"]
+    analyzer_arn    = os.environ["ANALYZER_RUNTIME_ARN"]
+    synthesizer_arn = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+    researcher  = _make_agent(researcher_arn,  "researcher",  "Market research specialist.")
+    # Same analyzer_arn used three times — parallel instances of the same specialist
+    analyzer_a  = _make_agent(analyzer_arn, "analyzer_a", "Option A analyst ($19.99/mo).")
+    analyzer_b  = _make_agent(analyzer_arn, "analyzer_b", "Option B analyst ($14.99/mo).")
+    analyzer_c  = _make_agent(analyzer_arn, "analyzer_c", "Option C analyst ($12.99/mo).")
+    synthesizer = _make_agent(synthesizer_arn, "synthesizer", "Executive memo writer.")
 
     builder = GraphBuilder()
     builder.add_node(researcher,  "researcher")

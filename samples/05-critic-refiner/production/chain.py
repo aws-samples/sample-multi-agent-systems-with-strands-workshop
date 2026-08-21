@@ -27,10 +27,8 @@ from strands.agent.a2a_agent import A2AAgent
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
 
-REGION          = os.environ.get("AWS_REGION", "us-east-1")
-WRITER_ARN      = os.environ["WRITER_RUNTIME_ARN"]
-CRITIC_ARN      = os.environ["CRITIC_RUNTIME_ARN"]
-MAX_CYCLES      = 4
+REGION     = os.environ.get("AWS_REGION", "us-east-1")
+MAX_CYCLES = 4
 
 DEFAULT_BRIEF = (
     "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "
@@ -76,8 +74,10 @@ def _call(agent: A2AAgent, prompt: str, timeout: int = 300) -> str:
 
 def run_chain(brief: str) -> str:
     """Run the Generator↔Critic loop until APPROVED or MAX_CYCLES."""
-    writer = _make_agent(WRITER_ARN, "writer", "Produces and revises the executive memo.")
-    critic = _make_agent(CRITIC_ARN, "critic", "Evaluates the memo: APPROVED or REVISION NEEDED.")
+    writer_arn = os.environ["WRITER_RUNTIME_ARN"]
+    critic_arn = os.environ["CRITIC_RUNTIME_ARN"]
+    writer = _make_agent(writer_arn, "writer", "Produces and revises the executive memo.")
+    critic = _make_agent(critic_arn, "critic", "Evaluates the memo: APPROVED or REVISION NEEDED.")
 
     # Step 1: Writer produces the first draft
     draft = _call(writer, brief)

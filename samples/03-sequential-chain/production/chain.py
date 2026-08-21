@@ -36,10 +36,7 @@ from strands.multiagent import GraphBuilder
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 
-REGION          = os.environ.get("AWS_REGION", "us-east-1")
-RESEARCHER_ARN  = os.environ["RESEARCHER_RUNTIME_ARN"]
-ANALYST_ARN     = os.environ["ANALYST_RUNTIME_ARN"]
-SYNTHESIZER_ARN = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 DEFAULT_BRIEF = (
     "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "
@@ -62,9 +59,12 @@ def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
 
 def run_chain(brief: str) -> str:
     """Run Researcher → Analyst → Synthesizer and return the final memo."""
-    researcher  = _make_agent(RESEARCHER_ARN,  "researcher",  "Market research specialist.")
-    analyst     = _make_agent(ANALYST_ARN,     "analyst",     "Business strategy analyst.")
-    synthesizer = _make_agent(SYNTHESIZER_ARN, "synthesizer", "Executive memo writer.")
+    researcher_arn  = os.environ["RESEARCHER_RUNTIME_ARN"]
+    analyst_arn     = os.environ["ANALYST_RUNTIME_ARN"]
+    synthesizer_arn = os.environ["SYNTHESIZER_RUNTIME_ARN"]
+    researcher  = _make_agent(researcher_arn,  "researcher",  "Market research specialist.")
+    analyst     = _make_agent(analyst_arn,     "analyst",     "Business strategy analyst.")
+    synthesizer = _make_agent(synthesizer_arn, "synthesizer", "Executive memo writer.")
 
     builder = GraphBuilder()
     builder.add_node(researcher,  "researcher")
