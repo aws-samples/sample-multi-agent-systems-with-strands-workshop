@@ -3,7 +3,7 @@ Cleanup Module 8: Capstone — delete all AgentCore resources.
 
 Deletes (in order):
   1. 4 AgentCore Runtimes (researcher, analyzer, criticref, orchestrator)
-  2. 4 IAM roles
+  2. 2 IAM roles
   3. AgentCore Memory resource (if it exists)
   4. S3 code objects for this module
 

@@ -41,8 +41,8 @@ All four multi-agent patterns combined into one complete pipeline.
 ## Run
 
 ```bash
-pip install -r requirements.txt
-python chat.py
+uv pip install -r requirements.txt
+uv run python chat.py
 ```
 
 ## What happens at runtime

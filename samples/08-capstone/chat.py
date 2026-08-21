@@ -7,8 +7,8 @@ All 4 patterns combined:
   P1 Sequential      — Parallel phase → Program Revisor synthesis
 
     cd samples/08-capstone
-    pip install -r requirements.txt
-    python chat.py
+    uv pip install -r requirements.txt
+    uv run python chat.py
 
 Type 'quit' or Ctrl+C to stop.
 """

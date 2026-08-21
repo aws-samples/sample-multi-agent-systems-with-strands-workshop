@@ -1,4 +1,3 @@
-import os
 """
 Interactive multi-turn chat with the Capstone AgentCore Runtime.
 
@@ -37,6 +36,7 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 import uuid

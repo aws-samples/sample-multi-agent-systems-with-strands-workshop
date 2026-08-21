@@ -1,4 +1,4 @@
-"""M7 Production: Decision-Memo Capstone on AgentCore Runtime.
+"""M8 Production: Decision-Memo Capstone on AgentCore Runtime.
 Patterns combined: P1 Sequential + P2 Fork-Join + P3 Critic-Refiner + P5 Agent-as-Tool.
 
 Single Runtime (default): all patterns inside one container.
@@ -116,7 +116,7 @@ def invoke(payload, context):
     _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
     _otel_ctx = _baggage.set_baggage("session.id", _session_id)
     _ctx.attach(_otel_ctx)
-    logger.info("session.id=%s module=m7-capstone", _session_id)
+    logger.info("session.id=%s module=m8-capstone", _session_id)
     orchestrator = Agent(
         tools=[researcher_agent, parallel_analyzers, critic_refiner],
         system_prompt=ORCHESTRATOR_PROMPT,
