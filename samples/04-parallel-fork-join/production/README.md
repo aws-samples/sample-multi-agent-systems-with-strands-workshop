@@ -31,6 +31,7 @@ so a lightweight coordinator script is enough.
 | `deploy.py` | Deploy 3 specialist runtimes (A2A) in parallel |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
 | `chain.py` | Fork-join coordinator — runs locally via GraphBuilder |
+| `chat.py` | Interactive multi-turn chat (submit multiple briefs) |
 | `a2a_utils.py` | SigV4 auth and A2A utilities for chain.py |
 | `invoke.py` | Single invocation helper — wraps chain.py |
 | `specialists/researcher/main.py` | Researcher A2A runtime |
@@ -54,12 +55,16 @@ Saves ARNs to `.env_arns`.
 
 ---
 
-## Run the chain
+## Run
 
 ```bash
 source .env_arns
-python chain.py                         # default brief
-python chain.py "your brief here"       # custom brief
+
+# Single run (default brief)
+python chain.py
+
+# Interactive multi-turn chat (submit multiple briefs)
+python chat.py
 ```
 
 ---
@@ -73,14 +78,6 @@ C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 
 First call: 1-2 min (cold start).  
 Subsequent calls: 15-30s (warm containers).
-
----
-
-## Run from a terminal
-
-```bash
-source .env_arns && python chain.py
-```
 
 ---
 
