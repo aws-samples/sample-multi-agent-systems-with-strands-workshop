@@ -94,9 +94,16 @@ print(json.loads(response["response"].read()))
 ## Multi-turn chat
 
 ```bash
+# Interactive (multi-turn)
 python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
+  --actor-id workshop-user-01 \
+  --runtime-arn $(cat .runtime_arn)
+
+# Single prompt (non-interactive)
+python chat.py \
+  --actor-id workshop-user-01 \
+  --runtime-arn $(cat .runtime_arn) \
+  --prompt "NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months."
 ```
 
 ---

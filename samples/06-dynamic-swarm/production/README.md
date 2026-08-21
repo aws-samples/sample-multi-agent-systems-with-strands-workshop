@@ -77,9 +77,16 @@ python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m6_orchestr
 ## Multi-turn chat
 
 ```bash
+# Interactive (multi-turn)
 python chat.py \
-  --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m6_orchestrator-XXXXX
+  --actor-id workshop-user-01 \
+  --runtime-arn $(cat .runtime_arn)
+
+# Single prompt (non-interactive)
+python chat.py \
+  --actor-id workshop-user-01 \
+  --runtime-arn $(cat .runtime_arn) \
+  --prompt "CPU spike on db-prod-01. Disk I/O normal. Incident started 10 min ago."
 ```
 
 ---

@@ -1,9 +1,12 @@
 """
 Multi-turn production chat for AgentCore Agent-as-Tool.
 
-Usage:
+Usage (interactive):
   python chat.py --actor-id workshop-user-01 --runtime-arn $(cat .runtime_arn)
   python chat.py --actor-id workshop-user-01 --runtime-arn $(cat .runtime_arn) --session-id <id>
+
+Usage (single prompt):
+  python chat.py --actor-id workshop-user-01 --runtime-arn $(cat .runtime_arn) --prompt "your brief here"
 
 Press Enter on an empty line or Ctrl+C to exit.
 Each session is identified by a session-id — save it to resume the conversation.
@@ -19,11 +22,28 @@ from botocore.config import Config
 ACTOR_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"
 
 
+def _invoke(client, runtime_arn, actor_id, session_id, user_input):
+    response = client.invoke_agent_runtime(
+        agentRuntimeArn=runtime_arn,
+        runtimeSessionId=session_id,
+        payload=json.dumps({"prompt": user_input}).encode(),
+        qualifier="DEFAULT",
+        requestMetadata={ACTOR_HEADER: actor_id},
+    )
+    raw = response["response"].read()
+    try:
+        result = json.loads(raw)
+        return result.get("response", result) if isinstance(result, dict) else result
+    except Exception:
+        return raw.decode()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--actor-id",    required=True,  help="Your user alias (scopes conversation memory per user)")
     parser.add_argument("--runtime-arn", required=True,  help="Orchestrator ARN from .runtime_arn or deploy output")
     parser.add_argument("--session-id",  default=None,   help="Resume a previous session (optional)")
+    parser.add_argument("--prompt",      default=None,   help="Single prompt — submit once and exit (non-interactive)")
     parser.add_argument("--region",      default=os.environ.get("AWS_REGION", "us-east-1"))
     args = parser.parse_args()
 
@@ -43,9 +63,17 @@ def main():
     print( "    ↑ Save this to resume the conversation later with --session-id")
     print(f"  Runtime   : {args.runtime_arn}")
     print(sep)
+
+    if args.prompt:
+        print(f"You: {args.prompt}\n")
+        try:
+            print(f"Agent: {_invoke(client, args.runtime_arn, args.actor_id, session_id, args.prompt)}\n")
+        except Exception as e:
+            print(f"[Error: {e}]\n")
+        return
+
     print("  Type your message. Press Ctrl+C or Enter on an empty line to exit.")
     print()
-
     while True:
         try:
             user_input = input("You: ").strip()
@@ -55,22 +83,8 @@ def main():
         if not user_input:
             print("Goodbye!")
             break
-
         try:
-            response = client.invoke_agent_runtime(
-                agentRuntimeArn=args.runtime_arn,
-                runtimeSessionId=session_id,
-                payload=json.dumps({"prompt": user_input}).encode(),
-                qualifier="DEFAULT",
-                requestMetadata={ACTOR_HEADER: args.actor_id},
-            )
-            raw = response["response"].read()
-            try:
-                result = json.loads(raw)
-                reply = result.get("response", result) if isinstance(result, dict) else result
-            except Exception:
-                reply = raw.decode()
-            print(f"\nAgent: {reply}\n")
+            print(f"\nAgent: {_invoke(client, args.runtime_arn, args.actor_id, session_id, user_input)}\n")
         except Exception as e:
             print(f"\n[Error invoking runtime: {e}]\n")
 
