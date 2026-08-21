@@ -53,13 +53,26 @@ HERE    = Path(__file__).parent
 # ── Memory helpers ─────────────────────────────────────────────────────────────
 
 def create_memory(ctl, prefix: str) -> str:
-    """Create an AgentCore Memory resource and wait for it to become ACTIVE.
+    """Create or reuse an AgentCore Memory resource.
 
+    If a Memory with the same name already exists, returns its ID without failing.
     Memory name must match [a-zA-Z][a-zA-Z0-9_]{0,47}.
     eventExpiryDuration: STM events are kept for this many days before expiry.
     memoryStrategies: SEMANTIC strategy extracts facts into LTM under /facts/{actorId}.
     """
     memory_name = f"{prefix}CapstoneMemory"
+
+    # Check if memory with this name already exists (list_memories returns id = name-suffix)
+    try:
+        resp = ctl.list_memories()
+        for mem in resp.get("memories", []):
+            if mem.get("id", "").startswith(memory_name):
+                existing_id = mem["id"]
+                print(f"  Memory {existing_id} already exists — reusing.")
+                return existing_id
+    except Exception:
+        pass  # nosec B110 — if list fails, proceed to create
+
     print(f"  Creating Memory: {memory_name} ...")
     resp = ctl.create_memory(
         name=memory_name,
