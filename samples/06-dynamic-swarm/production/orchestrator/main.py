@@ -28,7 +28,7 @@ from strands.agent.conversation_manager import SlidingWindowConversationManager
 logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
-REGION               = os.environ.get("AWS_REGION", "us-east-1")
+REGION               = os.environ.get("AWS_REGION") or os.environ["MONITOR_RUNTIME_ARN"].split(":")[3]
 MONITOR_ARN          = os.environ["MONITOR_RUNTIME_ARN"]
 NETWORK_SPECIALIST_ARN = os.environ["NETWORK_SPECIALIST_RUNTIME_ARN"]
 DB_ADMIN_ARN         = os.environ["DB_ADMIN_RUNTIME_ARN"]

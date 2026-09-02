@@ -20,7 +20,11 @@ from bedrock_agentcore.runtime.a2a import build_runtime_url
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest as BotocoreRequest
 
-REGION = os.environ.get("AWS_REGION", "us-east-1")
+REGION = os.environ.get("AWS_REGION") or boto3.Session().region_name
+if not REGION:
+    raise EnvironmentError(
+        "AWS region not set. Run: export AWS_REGION=<region> - all services deploy to that one region."
+    )
 
 # Headers injected by the orchestrator on every A2A call to a specialist.
 # SESSION_HEADER is also set by the AgentCore platform automatically, but we

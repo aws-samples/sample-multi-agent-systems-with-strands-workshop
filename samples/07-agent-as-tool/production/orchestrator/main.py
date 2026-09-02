@@ -35,7 +35,7 @@ from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()
 
-REGION           = os.environ.get("AWS_REGION", "us-east-1")
+REGION           = os.environ.get("AWS_REGION") or os.environ["RESEARCH_RUNTIME_ARN"].split(":")[3]
 RESEARCH_ARN     = os.environ["RESEARCH_RUNTIME_ARN"]
 FINANCE_ARN      = os.environ["FINANCE_RUNTIME_ARN"]
 LEGAL_ARN        = os.environ["LEGAL_RUNTIME_ARN"]

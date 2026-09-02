@@ -146,7 +146,7 @@ What `deploy.py` creates per module:
 |-------------|--------|
 | Python | 3.10 or higher (3.13 recommended) |
 | AWS credentials | Amazon Bedrock access. Enable models at [Bedrock console](https://console.aws.amazon.com/bedrock/). |
-| Region | `us-east-1` (default). Set `AWS_REGION` env var to change. |
+| Region | Read from `AWS_REGION` (falls back to your AWS CLI config region) - one region for all services, never hardcoded. Supported: us-east-1, us-east-2, us-west-2. |
 | Modules 03–08 production | AWS credentials with AgentCore, IAM, and S3 permissions |
 
 The default model is **Claude Sonnet 4** via Amazon Bedrock cross-region inference. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).

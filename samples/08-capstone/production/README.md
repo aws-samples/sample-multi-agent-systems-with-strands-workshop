@@ -96,7 +96,7 @@ The deploy output prints the **Orchestrator ARN** and **Memory ID**. Use them wi
 # New conversation
 python chat.py \
   --actor-id user-123 \
-  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m8_orchestrator-XXXXX
+  --runtime-arn arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/m8_orchestrator-XXXXX
 
 # Resume existing conversation (same actorId - LTM still applies across sessions)
 python chat.py \
@@ -126,7 +126,7 @@ python chat.py \
 For testing without persistent memory or actorId:
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m8_orchestrator-XXXXX
+python invoke.py arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/m8_orchestrator-XXXXX
 ```
 
 ---

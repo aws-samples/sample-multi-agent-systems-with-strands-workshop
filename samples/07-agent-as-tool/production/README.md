@@ -66,7 +66,7 @@ Deployment takes 3–5 minutes. The deploy output prints the orchestrator ARN.
 Single invocation:
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m7_orchestrator-XXXXX
+python invoke.py arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/m7_orchestrator-XXXXX
 ```
 
 Or use the RUNTIME_ARN from the notebook:
@@ -77,7 +77,7 @@ from botocore.config import Config
 
 client = boto3.client(
     "bedrock-agentcore",
-    region_name=os.environ.get("AWS_REGION", "us-east-1"),
+    region_name=os.environ.get("AWS_REGION") or boto3.Session().region_name,
     config=Config(read_timeout=300),
 )
 response = client.invoke_agent_runtime(

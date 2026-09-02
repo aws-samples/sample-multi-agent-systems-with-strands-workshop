@@ -69,7 +69,7 @@ Deploys `5` runtimes: monitor (A2A), network_specialist (A2A), db_admin (A2A), r
 ## Invoke
 
 ```bash
-python invoke.py arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/m6_orchestrator-XXXXX
+python invoke.py arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/m6_orchestrator-XXXXX
 ```
 
 ---

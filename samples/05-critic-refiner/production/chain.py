@@ -12,7 +12,7 @@ Context is passed explicitly in each A2A call — no shared in-process memory ne
 Required env vars (set by deploy.py or manually):
   WRITER_RUNTIME_ARN
   CRITIC_RUNTIME_ARN
-  AWS_REGION (optional, defaults to us-east-1)
+  AWS_REGION (optional, defaults to the region in the runtime ARNs)
 
 Usage:
   python chain.py                   # uses default demo brief
@@ -27,7 +27,7 @@ from strands.agent.a2a_agent import A2AAgent
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
 
-REGION     = os.environ.get("AWS_REGION", "us-east-1")
+REGION     = os.environ.get("AWS_REGION") or os.environ["WRITER_RUNTIME_ARN"].split(":")[3]
 MAX_CYCLES = 4
 
 DEFAULT_BRIEF = (

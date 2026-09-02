@@ -10,7 +10,7 @@ if not RUNTIME_ARN:
 
 client = boto3.client(
     "bedrock-agentcore",
-    region_name=os.environ.get("AWS_REGION","us-east-1"),
+    region_name=os.environ.get("AWS_REGION") or RUNTIME_ARN.split(":")[3],
     config=Config(read_timeout=300),
 )
 

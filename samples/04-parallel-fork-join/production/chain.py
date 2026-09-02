@@ -19,7 +19,7 @@ Required env vars (set by deploy.py or manually):
   RESEARCHER_RUNTIME_ARN
   ANALYZER_RUNTIME_ARN
   SYNTHESIZER_RUNTIME_ARN
-  AWS_REGION (optional, defaults to us-east-1)
+  AWS_REGION (optional, defaults to the region in the runtime ARNs)
 
 Usage:
   python chain.py                   # uses default demo brief
@@ -33,7 +33,7 @@ from strands.multiagent import GraphBuilder
 
 from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 
-REGION = os.environ.get("AWS_REGION", "us-east-1")
+REGION = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 
 DEFAULT_BRIEF = (
     "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "

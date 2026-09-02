@@ -27,7 +27,7 @@ Environment variables required:
 
 Optional:
   BEDROCK_AGENTCORE_MEMORY_ID  — enables AgentCore Memory (STM + LTM)
-  AWS_REGION                   — defaults to us-east-1
+  AWS_REGION                   — optional; defaults to the region in the runtime ARNs
 """
 
 import asyncio
@@ -49,7 +49,7 @@ from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()
 
-REGION             = os.environ.get("AWS_REGION", "us-east-1")
+REGION             = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 MEMORY_ID          = os.environ.get("BEDROCK_AGENTCORE_MEMORY_ID")
 RESEARCHER_ARN     = os.environ["RESEARCHER_RUNTIME_ARN"]
 ANALYZER_ARN       = os.environ["ANALYZER_RUNTIME_ARN"]

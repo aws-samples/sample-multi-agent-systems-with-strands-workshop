@@ -21,7 +21,11 @@ import botocore.exceptions
 # Serialize pip calls across threads — pip._internal is not thread-safe
 _PIP_LOCK = threading.Lock()
 
-REGION = os.environ.get("AWS_REGION", "us-east-1")
+REGION = os.environ.get("AWS_REGION") or boto3.Session().region_name
+if not REGION:
+    raise EnvironmentError(
+        "AWS region not set. Run: export AWS_REGION=<region> - all services deploy to that one region."
+    )
 
 # Threading event used only as a timeout-based wait primitive in polling loops.
 # It is never set, so wait() always blocks until the timeout expires.

@@ -28,7 +28,7 @@ Open `module-01.ipynb` in VS Code or JupyterLab and run cells top to bottom.
 ## Prerequisites
 
 - Python 3.10 or higher
-- AWS credentials with Amazon Bedrock access in us-east-1
+- AWS credentials with Amazon Bedrock access in your workshop region
 
 ## Next
 
