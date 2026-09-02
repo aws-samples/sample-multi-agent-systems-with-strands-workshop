@@ -57,3 +57,9 @@ canva-prompts.md
 **/.*.bkp
 .env_arns
 .runtime_arn
+
+# Blog drafts (local only, never push)
+blogs/
+
+# Internal review notes (local only, never push)
+FIXES.md
