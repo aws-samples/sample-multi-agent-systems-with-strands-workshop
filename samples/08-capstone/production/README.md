@@ -2,7 +2,7 @@
 
 Deploy the Capstone pattern to Amazon Bedrock AgentCore: 4 Runtimes + AgentCore Memory for persistent multi-turn conversations.
 
-![Capstone architecture](./architecture.png)
+![Capstone production: Orchestrator Runtime with AgentCore Memory calls Researcher, Analyzer, and Critic-Refiner A2A specialist runtimes](./architecture.png)
 
 **Pattern:** Orchestrator (Agent-as-Tool, Module 7 pattern) + parallel fork-join analyzers (Module 4) + Critic-Refiner quality gate (Module 5). All coordinated across 4 separate Runtimes with shared AgentCore Memory.
 

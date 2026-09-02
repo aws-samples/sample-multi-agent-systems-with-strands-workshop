@@ -2,7 +2,7 @@
 
 Deploys two separate A2A specialist runtimes. `chain.py` coordinates the loop locally.
 
-![Pattern 3: Critic-Refiner architecture](./architecture.png)
+![Critic-Refiner production: two A2A specialist runtimes (Writer and Critic); chain.py manages the revision loop locally until the Critic returns APPROVED](./architecture.png)
 
 **Pattern:** Writer produces a draft → Critic evaluates → feedback loops back until APPROVED.  
 **Strands primitive:** `GraphBuilder + cycle`

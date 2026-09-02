@@ -2,7 +2,7 @@
 
 Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using the A2A protocol.
 
-![Pattern 4: Dynamic Swarm architecture](./architecture.png)
+![Dynamic Swarm production: User invokes the HTTP Orchestrator Runtime, which hands off via A2A to four specialist runtimes (Monitor, Network Specialist, DB Admin, Resolver); traces flow to AgentCore Observability and Amazon CloudWatch](./architecture.png)
 
 **Pattern:** Researcher, Analyst, and Writer agents hand off autonomously. The LLM Orchestrator decides routing at runtime.
 

@@ -2,7 +2,7 @@
 
 Deploy Pattern 2 (Parallel Fork-Join) to Amazon Bedrock AgentCore Runtime using the A2A protocol.
 
-![Pattern 2: Parallel Fork-Join architecture](./architecture.png)
+![Parallel Fork-Join production: three A2A specialist runtimes (Researcher, Analyzer called 3x concurrently, Synthesizer); chain.py coordinates the fork-join DAG locally](./architecture.png)
 
 **Pattern:** Researcher gathers data → 3 Analyzers run in parallel (Options A, B, C) → Synthesizer joins results.  
 **Strands primitive:** `GraphBuilder` (Workflow / DAG)

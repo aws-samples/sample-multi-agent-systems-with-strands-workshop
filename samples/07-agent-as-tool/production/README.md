@@ -1,6 +1,6 @@
 # Pattern 5: Agent-as-Tool - Production Deployment
 
-![Agent-as-Tool Runtime architecture](./architecture.png)
+![Agent-as-Tool production: User invokes the HTTP Orchestrator Runtime, which calls four @tool A2A specialist runtimes (Research, Finance, Legal, Writer); traces flow to AgentCore Observability and Amazon CloudWatch](./architecture.png)
 
 Deploy Pattern 5 to Amazon Bedrock AgentCore: 5 Runtimes where the LLM orchestrator treats each specialist as a `@tool` function.
 
