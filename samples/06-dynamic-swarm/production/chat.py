@@ -22,13 +22,22 @@ from botocore.config import Config
 ACTOR_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"
 
 
+def _register_actor_header(client, actor_id):
+    # invoke_agent_runtime has no API parameter for custom runtime headers - the
+    # actor id must travel as an HTTP header injected via the boto3 event system.
+    def add_actor_header(request, **kwargs):
+        request.headers.add_header(ACTOR_HEADER, actor_id)
+    client.meta.events.register_first(
+        "before-sign.bedrock-agentcore.InvokeAgentRuntime", add_actor_header
+    )
+
+
 def _invoke(client, runtime_arn, actor_id, session_id, user_input):
     response = client.invoke_agent_runtime(
         agentRuntimeArn=runtime_arn,
         runtimeSessionId=session_id,
         payload=json.dumps({"prompt": user_input}).encode(),
         qualifier="DEFAULT",
-        requestMetadata={ACTOR_HEADER: actor_id},
     )
     raw = response["response"].read()
     try:
@@ -44,8 +53,10 @@ def main():
     parser.add_argument("--runtime-arn", required=True,  help="Orchestrator ARN from .runtime_arn or deploy output")
     parser.add_argument("--session-id",  default=None,   help="Resume a previous session (optional)")
     parser.add_argument("--prompt",      default=None,   help="Single prompt — submit once and exit (non-interactive)")
-    parser.add_argument("--region",      default=os.environ.get("AWS_REGION", "us-east-1"))
+    parser.add_argument("--region",      default=os.environ.get("AWS_REGION") or boto3.Session().region_name)
     args = parser.parse_args()
+    if not args.region:
+        args.region = args.runtime_arn.split(":")[3]
 
     session_id = args.session_id or str(uuid.uuid4())
     client = boto3.client(
@@ -53,6 +64,7 @@ def main():
         region_name=args.region,
         config=Config(read_timeout=600),
     )
+    _register_actor_header(client, args.actor_id)
 
     sep = "=" * 60
     print(sep)
