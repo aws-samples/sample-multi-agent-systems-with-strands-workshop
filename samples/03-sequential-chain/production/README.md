@@ -5,7 +5,7 @@ Deploy Pattern 1 (Sequential Chain) to Amazon Bedrock AgentCore Runtime using th
 ![Sequential Chain production: three A2A specialist runtimes (Researcher, Analyst, Synthesizer) deployed independently; chain.py coordinates the fixed-order pipeline locally](./architecture.png)
 
 **Pattern:** Researcher → Analyst → Synthesizer in fixed sequential order.  
-**Strands primitive:** `GraphBuilder` (Workflow / DAG)
+**Strands primitive:** `GraphBuilder` (Graph)
 
 ---
 

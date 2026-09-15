@@ -45,9 +45,12 @@ Guidelines:
 def main():
     # One Agent instance reused across all turns, its conversation history
     # lives in agent.messages, which is what makes it multi-turn.
+    # context_manager="auto" keeps that growing history within the model's
+    # context window automatically (summarises + offloads as it fills).
     agent = Agent(
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         system_prompt=SYSTEM_PROMPT,
+        context_manager="auto",
     )
 
     print("Decision Intelligence Agent  |  type 'quit' to exit")

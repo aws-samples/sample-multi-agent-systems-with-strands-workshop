@@ -9,6 +9,13 @@ Manages the Generator↔Critic loop using two separate A2A specialist runtimes:
 The loop runs until the Critic says APPROVED or max_cycles is reached.
 Context is passed explicitly in each A2A call — no shared in-process memory needed.
 
+Why an explicit loop here (and not a GraphBuilder cycle):
+  A GraphBuilder cycle drives its nodes in one process. In this deployment the
+  Writer and Critic are *separate* AgentCore Runtimes reached over A2A, so the
+  coordinator lives outside both and threads context between them by hand. The
+  single-runtime variant `main.py` uses the native GraphBuilder cycle instead —
+  compare the two to see when each is the right fit.
+
 Required env vars (set by deploy.py or manually):
   WRITER_RUNTIME_ARN
   CRITIC_RUNTIME_ARN

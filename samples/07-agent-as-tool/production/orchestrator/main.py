@@ -26,7 +26,6 @@ from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent, tool
-from strands.agent.conversation_manager import SlidingWindowConversationManager
 
 import sys
 sys.path = [str(Path(__file__).parent)] + sys.path
@@ -147,7 +146,7 @@ def _get_session_agent(session_id: str) -> Agent:
             _session_agents[session_id] = Agent(
                 tools=[research_agent, finance_agent, legal_agent, writer_agent],
                 system_prompt=ORCHESTRATOR_PROMPT,
-                conversation_manager=SlidingWindowConversationManager(window_size=20),
+                context_manager="auto",
                 callback_handler=None,
             )
         return _session_agents[session_id]

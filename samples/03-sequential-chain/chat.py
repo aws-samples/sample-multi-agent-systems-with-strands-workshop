@@ -1,10 +1,10 @@
 """Interactive chat for Module 3: Sequential Chain.
 
-Uses Strands GraphBuilder (Workflow / DAG) to run the 3-stage pipeline:
+Uses the Strands Graph primitive (GraphBuilder) to run the 3-stage pipeline:
   Researcher → Analyst → Synthesizer
 
 Each node's output becomes the next node's input — the chain.
-The GraphBuilder is the Strands primitive for deterministic sequential workflows.
+GraphBuilder is the Strands primitive for deterministic multi-agent graphs.
 
     cd samples/03-sequential-chain
     uv pip install -r requirements.txt
@@ -85,7 +85,7 @@ def run_chain(brief: str) -> str:
 
 
 def main():
-    print("Sequential Chain — Strands GraphBuilder (Workflow / DAG)")
+    print("Sequential Chain — Strands Graph (GraphBuilder)")
     print("Submit a decision brief. Type 'quit' to exit.\n")
     print("Default brief: NovaCart Premium Tier. Press Enter to use it.\n")
 

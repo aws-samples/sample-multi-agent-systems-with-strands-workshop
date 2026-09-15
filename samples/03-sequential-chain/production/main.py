@@ -1,5 +1,7 @@
 """M2 Production: Sequential Chain on AgentCore Runtime.
-Pattern: Research → Analyst → Synthesizer (Python code passes strings).
+Pattern: Researcher → Analyst → Synthesizer
+Uses the Strands Graph primitive (GraphBuilder) — the graph engine passes each
+node's output to the next node; no manual Python string threading.
 
 Local test:  python main.py
 Deploy:      agentcore create → agentcore add → agentcore deploy
@@ -7,6 +9,7 @@ Deploy:      agentcore create → agentcore add → agentcore deploy
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
+from strands.multiagent import GraphBuilder
 
 logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
@@ -48,15 +51,27 @@ def invoke(payload, context):
     import uuid as _uuid
     from opentelemetry import baggage as _baggage, context as _ctx
     _session_id = (context.session_id if context and hasattr(context, "session_id") else None) or str(_uuid.uuid4())
-    _otel_ctx = _baggage.set_baggage("session.id", _session_id)
-    _ctx.attach(_otel_ctx)
+    _token = _ctx.attach(_baggage.set_baggage("session.id", _session_id))
     logger.info("session.id=%s module=m2-sequential-chain", _session_id)
 
-    research = researcher(f"Gather data for: {brief}")
-    analysis = analyst(f"Brief:\n{brief}\n\nResearch:\n{research}")
-    memo     = synthesizer(f"Brief:\n{brief}\n\nResearch:\n{research}\n\nAnalysis:\n{analysis}")
+    # Sequential chain expressed as a Strands Graph — the engine passes each
+    # node's output to the next node automatically (no manual string threading).
+    builder = GraphBuilder()
+    builder.add_node(researcher,  "researcher")
+    builder.add_node(analyst,     "analyst")
+    builder.add_node(synthesizer, "synthesizer")
+    builder.add_edge("researcher", "analyst")
+    builder.add_edge("analyst",    "synthesizer")
+    builder.set_execution_timeout(300)
 
-    return str(memo).strip()
+    result = builder.build()(brief)
+
+    _ctx.detach(_token)
+
+    for node in reversed(result.execution_order):
+        if node.node_id == "synthesizer":
+            return str(node.result).strip()
+    return str(result).strip()
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 **Pattern 1.** Break the single-agent ceiling with a 3-stage pipeline where each agent has one focused job and passes its output to the next.
 
-**Strands primitive:** `GraphBuilder` (Workflow / DAG)
+**Strands primitive:** `GraphBuilder` (Graph)
 
 ## Architecture
 
@@ -25,7 +25,7 @@ Each agent has a narrow system prompt and sees only what it needs for its role.
 
 ## Key concepts
 
-- **GraphBuilder**: Strands primitive for deterministic sequential workflows (Workflow / DAG)
+- **GraphBuilder**: Strands primitive for deterministic multi-agent graphs (a directed acyclic graph of agents)
 - **`add_node` / `add_edge`**: declare the graph structure; the engine enforces execution order
 - **Output propagation**: each node's output is automatically passed as input to connected nodes
 - **`callback_handler=None`**: silent intermediate agents; display the final result explicitly

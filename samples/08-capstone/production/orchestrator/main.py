@@ -210,7 +210,7 @@ def critic_refiner(brief: str, analyses: str) -> str:
 def _get_orchestrator(sid: str, aid: str) -> Agent:
     """Per-session Agent — isolated history and actor identity per session.
     Prevents conversation history leaks across different users/sessions.
-    Uses AgentCoreMemorySessionManager if MEMORY_ID is set, else SlidingWindow.
+    Uses AgentCoreMemorySessionManager if MEMORY_ID is set, else context_manager="auto".
     """
     if sid not in _orchestrators:
         if MEMORY_ID:
@@ -236,11 +236,10 @@ def _get_orchestrator(sid: str, aid: str) -> Agent:
                 callback_handler=None,
             )
         else:
-            from strands.agent.conversation_manager import SlidingWindowConversationManager
             _orchestrators[sid] = Agent(
                 tools=[researcher_agent, parallel_analyzers, critic_refiner],
                 system_prompt=ORCHESTRATOR_PROMPT,
-                conversation_manager=SlidingWindowConversationManager(window_size=20),
+                context_manager="auto",
                 callback_handler=None,
             )
     return _orchestrators[sid]

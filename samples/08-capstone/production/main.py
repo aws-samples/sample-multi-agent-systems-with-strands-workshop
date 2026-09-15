@@ -7,7 +7,6 @@ Multi-Runtime option: see README.md for deploying specialists as separate Runtim
 Local test:  python main.py
 Deploy:      agentcore create → agentcore add → agentcore deploy
 """
-import asyncio
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent, tool
@@ -58,19 +57,29 @@ def parallel_analyzers(brief: str, research_context: str) -> str:
         brief: The original decision brief
         research_context: Research findings from researcher_agent
     '''
-    a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+    # Fork-join via the Strands Graph primitive (Module 4) — the three analyzers
+    # have no edges between them, so the graph engine runs them in parallel.
+    # Each analyzer is scoped to one option through its system prompt. No asyncio.
+    a = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option A ($19.99 invite-only).", callback_handler=None)
+    b = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option B ($14.99 5% pilot).", callback_handler=None)
+    c = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option C ($12.99 full launch).", callback_handler=None)
 
-    async def fork():
-        return await asyncio.gather(
-            a.invoke_async(f"Option A ($19.99 invite-only)\nBrief: {brief}\nResearch: {research_context}"),
-            b.invoke_async(f"Option B ($14.99 5% pilot)\nBrief: {brief}\nResearch: {research_context}"),
-            c.invoke_async(f"Option C ($12.99 full launch)\nBrief: {brief}\nResearch: {research_context}"),
-        )
+    builder = GraphBuilder()
+    builder.add_node(a, "analyzer_a")
+    builder.add_node(b, "analyzer_b")
+    builder.add_node(c, "analyzer_c")
+    builder.set_entry_point("analyzer_a")
+    builder.set_entry_point("analyzer_b")
+    builder.set_entry_point("analyzer_c")
+    builder.set_execution_timeout(180)
 
-    ra, rb, rc = asyncio.run(fork())
-    return f"OPTION A:\n{ra}\n\nOPTION B:\n{rb}\n\nOPTION C:\n{rc}"
+    results = builder.build()(f"Brief:\n{brief}\n\nResearch:\n{research_context}")
+    out = {n.node_id: str(n.result) for n in results.execution_order}
+    return (
+        f"OPTION A:\n{out.get('analyzer_a', '')}\n\n"
+        f"OPTION B:\n{out.get('analyzer_b', '')}\n\n"
+        f"OPTION C:\n{out.get('analyzer_c', '')}"
+    )
 
 
 @tool

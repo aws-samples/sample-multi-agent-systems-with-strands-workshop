@@ -3,7 +3,7 @@
 **"Brief in, leadership memo out."**  
 All four multi-agent patterns combined into one complete pipeline.
 
-**Strands primitives:** `@tool` · `asyncio.gather` · `GraphBuilder` + cycle
+**Strands primitives:** `@tool` · `GraphBuilder` (fork-join + cycle)
 
 ## Architecture
 
@@ -14,8 +14,8 @@ All four multi-agent patterns combined into one complete pipeline.
 | Pattern | Component | Strands API |
 |---------|-----------|-------------|
 | **P5 Agent-as-Tool** | Orchestrator delegates to three specialist tools | `@tool` wrapping `Agent` |
-| **P1 Sequential** | Researcher gathers data; passed to analyzers | Python sequence |
-| **P2 Fork-Join** | Analyzers A, B, C run simultaneously | `asyncio.gather` + `invoke_async` |
+| **P1 Sequential** | Researcher gathers data; passed to analyzers | `GraphBuilder` edges |
+| **P2 Fork-Join** | Analyzers A, B, C run simultaneously | `GraphBuilder` parallel nodes |
 | **P3 Critic-Refiner** | Writer drafts memo → Critic approves or requests revision | `GraphBuilder` + cycle edge |
 
 ## Agents
@@ -34,7 +34,7 @@ All four multi-agent patterns combined into one complete pipeline.
 |------|---------|
 | `module-08.ipynb` | Step-by-step notebook: build tools → orchestrator → run → inspect |
 | `chat.py` | Run the complete pipeline interactively from the terminal |
-| `requirements.txt` | `strands-agents>=1.52.0`, `nest-asyncio>=1.6.0` |
+| `requirements.txt` | `strands-agents>=1.52.0` |
 | `production/` | Deploy to Amazon Bedrock AgentCore Runtime |
 
 ## Run
@@ -47,7 +47,7 @@ python chat.py
 ## What happens at runtime
 
 1. Orchestrator calls `researcher_agent(topic)` — uses business intelligence tools to gather market data
-2. Orchestrator calls `parallel_analyzers(brief, research)` — Analyzers A, B, C run simultaneously via `asyncio.gather`
+2. Orchestrator calls `parallel_analyzers(brief, research)` — Analyzers A, B, C run simultaneously via a `GraphBuilder` parallel graph
 3. Orchestrator calls `critic_refiner(brief, analyses)` — `GraphBuilder` Writer↔Critic loop until `APPROVED`
 4. Final approved memo returned
 

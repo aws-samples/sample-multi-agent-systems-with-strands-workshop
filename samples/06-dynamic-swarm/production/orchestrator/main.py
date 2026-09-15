@@ -23,7 +23,6 @@ import asyncio, logging, os, threading
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from strands import Agent, tool
-from strands.agent.conversation_manager import SlidingWindowConversationManager
 
 logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
@@ -136,7 +135,7 @@ def _get_orchestrator(sid: str) -> Agent:
         _orchestrators[sid] = Agent(
             tools=[monitor_agent, network_specialist_agent, db_admin_agent, resolver_agent],
             system_prompt=ORCHESTRATOR_PROMPT,
-            conversation_manager=SlidingWindowConversationManager(window_size=20),
+            context_manager="auto",
             callback_handler=None,
         )
     return _orchestrators[sid]

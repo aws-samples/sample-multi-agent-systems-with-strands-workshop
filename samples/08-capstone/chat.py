@@ -1,12 +1,12 @@
-"""Interactive chat for Module 7: Decision-Memo Capstone.
+"""Interactive chat for Module 8: Decision-Memo Capstone.
 
 Runs the full 4-pattern pipeline:
   P1 Sequential: Researcher gathers data
-  P2 Fork-Join:  3 analyzers run in parallel
-  P3 Critic-Refiner: Writer + Critic quality loop
+  P2 Fork-Join:  3 analyzers run in parallel (GraphBuilder)
+  P3 Critic-Refiner: Writer + Critic quality loop (GraphBuilder cycle)
   P5 Agent-as-Tool: Orchestrator coordinates all three
 
-    cd samples/07-capstone
+    cd samples/08-capstone
     pip install -r requirements.txt
     python chat.py
 
@@ -19,7 +19,7 @@ Model options (pass model= to each Agent to switch):
     model = BedrockModel(model_id="amazon.nova-pro-v1:0")   # AWS credits
 """
 
-import sys, os, time, asyncio
+import sys, os, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
 from strands import Agent, tool
@@ -66,19 +66,31 @@ def parallel_analyzers(brief: str, research_context: str) -> str:
         brief: The original decision brief
         research_context: Research findings from researcher_agent
     """
-    a = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    b = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
-    c = Agent(system_prompt=ANALYZER_PROMPT, callback_handler=None)
+    # Fork-join via the Strands Graph primitive (same as Module 4) — the three
+    # analyzers have no edges between them, so the graph engine runs them in
+    # parallel. Each analyzer is scoped to one option through its system prompt.
+    # No asyncio needed.
+    a = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option A ($19.99 invite-only).", callback_handler=None)
+    b = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option B ($14.99 5% pilot).", callback_handler=None)
+    c = Agent(system_prompt=f"{ANALYZER_PROMPT}\nAnalyze ONLY Option C ($12.99 full launch).", callback_handler=None)
 
-    async def fork():
-        return await asyncio.gather(
-            a.invoke_async(f"Option A ($19.99 invite-only)\nBrief: {brief}\nResearch: {research_context}"),
-            b.invoke_async(f"Option B ($14.99 5% pilot)\nBrief: {brief}\nResearch: {research_context}"),
-            c.invoke_async(f"Option C ($12.99 full launch)\nBrief: {brief}\nResearch: {research_context}"),
-        )
+    builder = GraphBuilder()
+    builder.add_node(a, "analyzer_a")
+    builder.add_node(b, "analyzer_b")
+    builder.add_node(c, "analyzer_c")
+    builder.set_entry_point("analyzer_a")
+    builder.set_entry_point("analyzer_b")
+    builder.set_entry_point("analyzer_c")
+    builder.set_execution_timeout(180)
 
-    ra, rb, rc = asyncio.run(fork())
-    return f"OPTION A:\n{ra}\n\nOPTION B:\n{rb}\n\nOPTION C:\n{rc}"
+    results = builder.build()(f"Brief:\n{brief}\n\nResearch:\n{research_context}")
+
+    out = {n.node_id: str(n.result) for n in results.execution_order}
+    return (
+        f"OPTION A:\n{out.get('analyzer_a', '')}\n\n"
+        f"OPTION B:\n{out.get('analyzer_b', '')}\n\n"
+        f"OPTION C:\n{out.get('analyzer_c', '')}"
+    )
 
 
 @tool
