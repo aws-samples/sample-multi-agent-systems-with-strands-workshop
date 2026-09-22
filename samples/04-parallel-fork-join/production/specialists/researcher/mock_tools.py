@@ -3,7 +3,7 @@
 """
 Mock tools for the Decision Intelligence use case.
 
-These tools simulate a real business intelligence backend for NovaCart,
+These tools simulate a real business intelligence backend for MarketNest,
 a mid-size e-commerce company evaluating a Premium Tier subscription launch.
 All data is hardcoded for workshop reproducibility.
 """
@@ -15,8 +15,8 @@ from strands import tool
 
 
 COMPANIES = {
-    "novacart": {
-        "company": "NovaCart",
+    "marketnest": {
+        "company": "MarketNest",
         "industry": "e-commerce",
         "founded": 2018,
         "market": "US and Canada",
@@ -103,7 +103,7 @@ def get_company_data(company_name: str) -> str:
     """Get current financial and operational data for a company.
 
     Args:
-        company_name: The company name to look up (e.g. 'NovaCart')
+        company_name: The company name to look up (e.g. 'MarketNest')
     """
     key = company_name.lower().strip()
     data = COMPANIES.get(key)

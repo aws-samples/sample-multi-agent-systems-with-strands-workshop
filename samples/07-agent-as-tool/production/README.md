@@ -83,7 +83,7 @@ client = boto3.client(
 response = client.invoke_agent_runtime(
     agentRuntimeArn=RUNTIME_ARN,
     runtimeSessionId=str(uuid.uuid4()),
-    payload=json.dumps({"prompt": "NovaCart: Options A ($19.99), B ($14.99), C ($12.99). Best CLV strategy?"}).encode(),
+    payload=json.dumps({"prompt": "MarketNest: Options A ($19.99), B ($14.99), C ($12.99). Best CLV strategy?"}).encode(),
     qualifier="DEFAULT",
 )
 print(json.loads(response["response"].read()))
@@ -103,7 +103,7 @@ python chat.py \
 python chat.py \
   --actor-id workshop-user-01 \
   --runtime-arn $(cat .runtime_arn) \
-  --prompt "NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months."
+  --prompt "MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months."
 ```
 
 ---
@@ -111,7 +111,7 @@ python chat.py \
 ## Sample brief
 
 ```
-We are considering launching a Premium Subscription Tier for NovaCart's
+We are considering launching a Premium Subscription Tier for MarketNest's
 top-performing product line. The subscription would offer priority shipping,
 exclusive discounts, and early access to new products. The target is to
 increase Customer Lifetime Value (CLV) by 15% within 6 months. Current
@@ -123,7 +123,7 @@ timing? Stakeholders include VP of Product, Finance Lead, and Operations.
 Options: (A) Launch pilot in Q3 with top 2 SKUs, (B) Delay until full product
 catalog analysis is complete, (C) Launch a limited free-tier first to gauge
 interest. The decision is needed within 2 weeks.
-NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot),
+MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot),
 C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 

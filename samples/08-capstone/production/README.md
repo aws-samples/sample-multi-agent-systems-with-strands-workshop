@@ -108,7 +108,7 @@ python chat.py \
 python chat.py \
   --actor-id user-123 \
   --runtime-arn arn:aws:bedrock-agentcore:... \
-  --prompt "Analyze NovaCart pricing options A, B, C"
+  --prompt "Analyze MarketNest pricing options A, B, C"
 ```
 
 `actorId` format requirements:

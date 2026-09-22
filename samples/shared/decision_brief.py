@@ -1,9 +1,9 @@
 """Shared decision brief and mock data for all workshop modules."""
 
 DECISION_BRIEF = """
-DECISION BRIEF: NovaCart Premium Tier Launch
+DECISION BRIEF: MarketNest Premium Tier Launch
 
-Company: NovaCart (mid-size e-commerce, 2M active users)
+Company: MarketNest (mid-size e-commerce, 2M active users)
 Decision owners: VP Product + CFO approval required
 
 Context:

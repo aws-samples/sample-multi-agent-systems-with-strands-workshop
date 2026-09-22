@@ -17,7 +17,7 @@ client = boto3.client(
 response = client.invoke_agent_runtime(
     agentRuntimeArn=RUNTIME_ARN,
     runtimeSessionId=str(uuid.uuid4()),
-    payload=json.dumps({"prompt": "NovaCart Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M."}).encode(),
+    payload=json.dumps({"prompt": "MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M."}).encode(),
     qualifier="DEFAULT",
 )
 

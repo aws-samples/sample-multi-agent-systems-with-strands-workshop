@@ -1,4 +1,4 @@
-# Module 8: Capstone — Decision-Memo System
+# Module 8: Capstone — Strategy Recommendation Engine
 
 **"Brief in, leadership memo out."**  
 All four multi-agent patterns combined into one complete pipeline.
@@ -7,7 +7,7 @@ All four multi-agent patterns combined into one complete pipeline.
 
 ## Architecture
 
-![Decision-Memo System: Orchestrator delegates to Researcher (P1), parallel Analyzers A/B/C (P2), then Writer↔Critic quality loop (P3)](./architecture.png)
+![Strategy Recommendation Engine: Orchestrator delegates to Researcher (P1), parallel Analyzers A/B/C (P2), then Writer↔Critic quality loop (P3)](./architecture.png)
 
 ## Patterns combined
 

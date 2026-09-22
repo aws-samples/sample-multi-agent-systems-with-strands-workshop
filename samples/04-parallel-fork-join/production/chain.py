@@ -36,7 +36,7 @@ from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
 REGION = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 
 DEFAULT_BRIEF = (
-    "NovaCart Premium Tier: Options A ($19.99/mo invite-only), "
+    "MarketNest Premium Tier: Options A ($19.99/mo invite-only), "
     "B ($14.99/mo 5% pilot), C ($12.99/mo full launch). "
     "Target: +15% CLV in 6 months. Budget: $2M."
 )

@@ -87,10 +87,10 @@ def run_chain(brief: str) -> str:
 def main():
     print("Sequential Chain — Strands Graph (GraphBuilder)")
     print("Submit a decision brief. Type 'quit' to exit.\n")
-    print("Default brief: NovaCart Premium Tier. Press Enter to use it.\n")
+    print("Default brief: MarketNest Premium Tier. Press Enter to use it.\n")
 
     DEFAULT_BRIEF = """
-DECISION BRIEF: NovaCart Premium Tier Launch
+DECISION BRIEF: MarketNest Premium Tier Launch
 Options: A (Exclusive $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
 Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
 """

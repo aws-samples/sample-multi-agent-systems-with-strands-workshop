@@ -2,7 +2,7 @@
 
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
-Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Progress from a single-agent foundation through five production patterns: Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool. Finish with a complete Decision-Memo system deployed on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/).
+Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Progress from a single-agent foundation through five production patterns: Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool. Finish with a complete Strategy Recommendation Engine deployed on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/).
 
 ![Strands Agents](https://img.shields.io/badge/Strands_Agents-SDK-FF9900?logo=amazonaws&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
@@ -31,9 +31,9 @@ Each module from **03 to 08** includes a `production/` subfolder with a complete
 
 ## What you'll build
 
-The **Decision-Memo System**: a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo covering options A/B/C, risks, success metrics, and a recommendation.
+The **Strategy Recommendation Engine**: a multi-agent pipeline that takes a decision brief (company, options, constraints) and produces an approved leadership memo covering options A/B/C, risks, success metrics, and a recommendation.
 
-![Decision-Memo System: all four patterns combined](./samples/08-capstone/architecture.png)
+![Strategy Recommendation Engine: all four patterns combined](./samples/08-capstone/architecture.png)
 
 ---
 

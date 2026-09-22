@@ -14,6 +14,8 @@ Build a minimal Strands agent, run it, and inspect every step of the agentic loo
 
 ![Strands agent loop: Input and Context flows into Reasoning LLM, then Tool Selection, then Tool Execution, which loops back to Reasoning until done, then Response](./agent-loop.png)
 
+![AI Agent Primitives: AGENT in center connected to Model (LLM), Tools, Prompt & Instructions, Memory & Context](./primitives.png)
+
 ## Files
 
 | File | Purpose |

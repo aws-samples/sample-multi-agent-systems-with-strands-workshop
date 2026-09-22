@@ -6,7 +6,7 @@
         <mxCell id="1" parent="0" />
 
         <!-- Decision Brief input -->
-        <mxCell id="brief" value="&lt;b&gt;Decision Brief&lt;/b&gt;&lt;br/&gt;&lt;font color=&apos;#B0C4CE&apos; style=&apos;font-size:11px&apos;&gt;NovaCart Premium Tier&lt;br/&gt;Target: +15% CLV&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;fontColor=#ffffff;fontSize=13;arcSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="brief" value="&lt;b&gt;Decision Brief&lt;/b&gt;&lt;br/&gt;&lt;font color=&apos;#B0C4CE&apos; style=&apos;font-size:11px&apos;&gt;MarketNest Premium Tier&lt;br/&gt;Target: +15% CLV&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A3A4A;strokeColor=#0D2535;fontColor=#ffffff;fontSize=13;arcSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="105" width="180" height="90" as="geometry" />
         </mxCell>
 

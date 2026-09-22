@@ -12,8 +12,12 @@ A single agent with three mock business intelligence tools that can look up comp
 |------|---------|
 | `module-02.ipynb` | Step-by-step notebook: tools → agent → loop inspection → ceiling demo |
 | `chat.py` | Interactive multi-turn chat in the terminal |
-| `decision_brief_tools.py` | Three mock `@tool` functions + NovaCart mock data |
+| `decision_brief_tools.py` | Three mock `@tool` functions + MarketNest mock data |
 | `requirements.txt` | `strands-agents>=1.52.0` |
+
+## Architecture
+
+![Single Agent: Decision Brief flows into the AGENT (Planning, Research, Analysis, Writing) producing the Decision Memo](./single-agent.png)
 
 ## How the Agentic Loop Works
 

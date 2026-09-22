@@ -57,7 +57,7 @@ def build_graph():
 def main():
     print("Parallel Fork-Join (GraphBuilder) | type 'quit' to exit\n")
     DEFAULT_BRIEF = """
-DECISION BRIEF: NovaCart Premium Tier Launch
+DECISION BRIEF: MarketNest Premium Tier Launch
 Options: A (Exclusive $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
 Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
 """

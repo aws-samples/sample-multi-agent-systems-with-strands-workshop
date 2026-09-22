@@ -5,7 +5,7 @@
         <mxCell id="0" /><mxCell id="1" parent="0" />
 
         <!-- Title -->
-        <mxCell id="title" value="Decision-Memo System: All 4 Patterns Combined" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
+        <mxCell id="title" value="Strategy Recommendation Engine: All 4 Patterns Combined" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
           <mxGeometry x="150" y="12" width="1300" height="28" as="geometry" />
         </mxCell>
 

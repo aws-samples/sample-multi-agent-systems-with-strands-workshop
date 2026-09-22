@@ -71,7 +71,7 @@ def researcher_agent(topic: str) -> str:
 ## Prerequisites
 
 - Python 3.10 or higher
-- Module 2 (Single Agent) must be in the same `samples/` folder. The notebooks and chat.py load `decision_brief_tools.py` from `../02-single-agent/` at runtime — it contains the NovaCart mock data and business intelligence tools used across all modules. Production deployments are self-contained (they bundle their own `mock_tools.py`).
+- Module 2 (Single Agent) must be in the same `samples/` folder. The notebooks and chat.py load `decision_brief_tools.py` from `../02-single-agent/` at runtime — it contains the MarketNest mock data and business intelligence tools used across all modules. Production deployments are self-contained (they bundle their own `mock_tools.py`).
 
 ## Run
 
@@ -82,4 +82,4 @@ uv run python chat.py
 
 ## Next
 
-→ [Module 8: Capstone: Decision-Memo System](../08-capstone/)
+→ [Module 8: Capstone: Strategy Recommendation Engine](../08-capstone/)

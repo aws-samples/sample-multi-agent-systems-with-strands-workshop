@@ -103,9 +103,9 @@ def writer_agent(brief: str, research_context: str, financial_analysis: str, leg
 def main():
     print("Agent-as-Tool — Investment Analysis | type 'quit' to exit\n")
     DEFAULT_BRIEF = """
-INVESTMENT BRIEF: NovaCart — Premium Subscription Tier
+INVESTMENT BRIEF: MarketNest — Premium Subscription Tier
 
-Company: NovaCart (e-commerce, 2M active users)
+Company: MarketNest (e-commerce, 2M active users)
 Proposal: Premium subscription tier — $2M investment ask
 Options: A (Invite-only $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
 Target return: +15% CLV in 6 months

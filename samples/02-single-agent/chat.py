@@ -54,7 +54,7 @@ def main():
     )
 
     print("Decision Intelligence Agent  |  type 'quit' to exit")
-    print('Try: "What is NovaCart\'s current CLV and churn rate?"\n')
+    print('Try: "What is MarketNest\'s current CLV and churn rate?"\n')
 
     while True:
         try:
