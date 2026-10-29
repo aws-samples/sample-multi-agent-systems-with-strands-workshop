@@ -9,20 +9,20 @@
 
 ## What you'll build
 
-An LLM orchestrator that uses three specialist agents as tools. The model decides: call researcher first → call analyzer for each option → call synthesizer. No Python routing code.
+An LLM orchestrator for investment analysis that uses four specialist agents as tools: `research_agent`, `finance_agent`, `legal_agent` and `writer_agent`. Its prompt asks it to research first, then get the financial analysis and the legal review, and finally have the writer produce the investment memo. The model decides each call and its arguments; there is no Python routing code.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `module-07.ipynb` | Step-by-step: prompts → wrap tools → orchestrator → inspect calls → metrics |
-| `chat.py` | Run the orchestrator interactively |
+| `chat.py` | Run the same orchestrator interactively; one orchestrator keeps the conversation |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 
 ## Key concepts
 
 - `@tool` wrapping `Agent`: full control over parameters; docstring is the routing logic
-- `callback_handler=None`: silent sub-agents; only orchestrator + final synthesizer stream
+- `callback_handler=None`: silent sub-agents; only the orchestrator and the writer stream their output
 - LLM routing: the orchestrator decides tool call order and arguments
 - Multi-parameter `@tool`: lets the orchestrator pass precise context per call
 
@@ -47,7 +47,7 @@ orchestrator = Agent(tools=[researcher.as_tool(name="...", description="...")])
 ## Strands Agents SDK
 
 The Strands Agents SDK supports three ways to use agents as tools. This module uses the `@tool` decorator for full parameter control.
-See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/index.md) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md).
+See [Agents-as-Tools documentation](https://strandsagents.com/docs/user-guide/sdk/multi-agent/agents-as-tools/index.md) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/index.md).
 
 ```python
 # Option 1: pass Agent directly (SDK auto-converts; single string input)
@@ -79,6 +79,8 @@ def researcher_agent(topic: str) -> str:
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
+
+`chat.py` uses the same prompts and `@tool` specialists as the notebook and waits for you to type or paste an investment brief. A multi-line brief pasted at once (like `INVESTMENT_BRIEF` in the notebook) is sent as one message. The chat keeps ONE orchestrator for the whole session, so it remembers the conversation: a follow-up about the memo is answered from its context, and it only calls the specialists again when the request needs new work. After each turn the chat lists the tool calls made in that turn. Type `quit` (or press Ctrl+C) to exit.
 
 ## Next
 

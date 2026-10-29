@@ -19,7 +19,7 @@ Each agent has a narrow system prompt and sees only what it needs for its role.
 | File | Purpose |
 |------|---------|
 | `module-03.ipynb` | Step-by-step notebook: prompts → GraphBuilder → run → inspect |
-| `chat.py` | Run the pipeline interactively from the terminal |
+| `chat.py` | Run the same chain interactively, with conversation memory across turns |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 | `production/` | Deploy specialists to AgentCore Runtime; coordinate via `chain.py` |
 
@@ -57,7 +57,7 @@ for node in reversed(result.execution_order):
         break
 ```
 
-See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/).
+See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/).
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
@@ -74,6 +74,18 @@ See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/co
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
+
+## Chat and conversation memory
+
+`chat.py` runs the same graph as the notebook (same prompts, agents, edges and timeout) and waits for you to type or paste a brief. A multi-line brief pasted at once (like `DECISION_BRIEF` in the notebook) is sent as one message. Ask follow-ups in the same session; type `quit` (or press Ctrl+C) to exit.
+
+Every turn builds the graph fresh, exactly like the notebook. The conversation is remembered with [Strands memory](https://strandsagents.com/docs/user-guide/sdk/memory/overview/):
+
+- One in-memory [`TestMemoryStore`](https://strandsagents.com/docs/user-guide/sdk/memory/test-memory-store/) (`persist=False`, nothing is written to disk) stores only two entries per turn: what you said and the final answer (the synthesizer's memo). Nothing the agents say to each other is stored.
+- Every agent gets its own `MemoryManager` over that store. [Context injection](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/) adds the relevant entries to the agent's model input before each call. `search_tool_config=False` keeps each agent's tools the same as in the notebook.
+- Inside a turn the agents still pass work to each other only through the graph edges.
+
+`TestMemoryStore` uses keyword matching and is meant for prototyping. For production, use a managed store such as the [Bedrock Knowledge Base store](https://strandsagents.com/docs/user-guide/sdk/memory/bedrock-knowledge-base/).
 
 ## Next
 

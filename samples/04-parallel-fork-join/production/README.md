@@ -67,6 +67,8 @@ python chain.py
 python chat.py
 ```
 
+In `chat.py`, a multi-line brief pasted at once is sent as one message. Each brief runs the deployed chain independently, and an empty line is ignored. Type `quit` (or press Ctrl+C) to exit.
+
 ---
 
 ## Sample brief
@@ -76,8 +78,8 @@ MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilo
 C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
 ```
 
-First call: 1-2 min (cold start).  
-Subsequent calls: 15-30s (warm containers).
+First call: ~1 min (cold start included).  
+Subsequent calls: ~45-60s (Researcher ~25s, three parallel Analyzers ~10s, Synthesizer ~13s).
 
 ---
 
@@ -103,6 +105,6 @@ AgentCore sends all telemetry to **Amazon CloudWatch**:
 
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
-- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/)
-- [Strands A2AAgent](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/)
+- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/)
+- [Strands A2AAgent](https://strandsagents.com/docs/user-guide/sdk/multi-agent/agent-to-agent/)
 - [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)

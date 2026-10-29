@@ -57,7 +57,7 @@ What gets created:
 | IAM orchestrator role | `workshop-agentcore-m7-orchestrator-role` |
 | Runtimes | `m7_research`, `m7_finance`, `m7_legal`, `m7_writer` (A2A) + `m7_orchestrator` (HTTP) |
 
-Deployment takes 3–5 minutes. The deploy output prints the orchestrator ARN.
+The deploy output prints the orchestrator ARN.
 
 ---
 
@@ -105,6 +105,8 @@ python chat.py \
   --runtime-arn $(cat .runtime_arn) \
   --prompt "MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot), C ($12.99/mo full launch). Target: +15% CLV in 6 months."
 ```
+
+In interactive mode, a multi-line brief pasted at once is sent as one message, and an empty line is ignored. Type `quit` (or press Ctrl+C) to exit.
 
 ---
 
@@ -155,5 +157,5 @@ Each invocation produces nested spans: one root per `invoke_agent_runtime`, chil
 
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
-- [Strands Agent-as-Tool](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool)
+- [Strands Agent-as-Tool](https://strandsagents.com/docs/user-guide/sdk/multi-agent/agent-to-agent/#as-a-tool)
 - [Strands A2AAgent API](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md)

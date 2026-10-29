@@ -8,12 +8,15 @@ Usage (interactive):
 Usage (single prompt):
   python chat.py --actor-id workshop-user-01 --runtime-arn $(cat .runtime_arn) --prompt "your brief here"
 
-Press Enter on an empty line or Ctrl+C to exit.
+A multi-line brief pasted at once is sent as ONE message.
+Type 'quit' or press Ctrl+C to exit.
 Each session is identified by a session-id — save it to resume the conversation.
 """
 import argparse
 import json
 import os
+import select
+import sys
 import uuid
 
 import boto3
@@ -45,6 +48,30 @@ def _invoke(client, runtime_arn, actor_id, session_id, user_input):
         return result.get("response", result) if isinstance(result, dict) else result
     except Exception:
         return raw.decode()
+
+
+def read_message(prompt: str) -> str:
+    """Read one user message from the terminal.
+
+    input() stops at the first newline, so a pasted multi-line brief would be
+    sent as many separate requests. Pasted text arrives all at once, so every
+    line already waiting on stdin is joined into the same message.
+    Raises EOFError when stdin is closed.
+    """
+    if sys.platform == "win32":
+        # select() only works on sockets on Windows: fall back to one line.
+        return input(prompt).strip()
+    print(prompt, end="", flush=True)
+    fd = sys.stdin.fileno()
+    data = os.read(fd, 65536)
+    if not data:
+        raise EOFError
+    while select.select([fd], [], [], 0.1)[0]:
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            break
+        data += chunk
+    return data.decode("utf-8", errors="replace").strip()
 
 
 def main():
@@ -84,17 +111,19 @@ def main():
             print(f"[Error: {e}]\n")
         return
 
-    print("  Type your message. Press Ctrl+C or Enter on an empty line to exit.")
+    print("  Type or paste your message and press Enter. Type 'quit' (or press Ctrl+C) to exit.")
     print()
     while True:
         try:
-            user_input = input("You: ").strip()
+            user_input = read_message("You: ")
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             break
-        if not user_input:
+        if user_input.lower() in {"quit", "exit", "q"}:
             print("Goodbye!")
             break
+        if not user_input:
+            continue
         try:
             print(f"\nAgent: {_invoke(client, args.runtime_arn, args.actor_id, session_id, user_input)}\n")
         except Exception as e:

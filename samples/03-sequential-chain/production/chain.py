@@ -34,7 +34,7 @@ import sys
 from strands.agent.a2a_agent import A2AAgent
 from strands.multiagent import GraphBuilder
 
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
+from a2a_utils import a2a_endpoint, make_a2a_config
 
 REGION = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 
@@ -53,7 +53,6 @@ def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
         description=description,
     )
     # Pre-populate agent card to skip unauthenticated discovery call
-    agent._agent_card = build_agent_card(arn, name, description, REGION)
     return agent
 
 

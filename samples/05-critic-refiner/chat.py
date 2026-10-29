@@ -7,11 +7,38 @@ Uses Strands GraphBuilder with a cycle edge:
     uv pip install -r requirements.txt
     uv run python chat.py
 
+Type or paste a decision brief and press Enter. A multi-line brief pasted at
+once (like DECISION_BRIEF in the notebook) is sent as ONE message.
 Type 'quit' or Ctrl+C to stop.
 """
 
+import asyncio
+import os
+import select
+import sys
+import time
+
 from strands import Agent
+from strands.memory import MemoryManager
 from strands.multiagent import GraphBuilder
+from strands.vended_memory_stores.test_memory_store import TestMemoryStore
+
+# Conversation memory for this chat session (Strands memory: TestMemoryStore + MemoryManager).
+# Only two things are saved per turn: what the user said and the system's final answer,
+# written with the store's documented add() once the turn ends. Nothing the agents say to
+# each other is stored. Every turn builds fresh agents, exactly like the notebook, and each
+# agent reads this memory through its own MemoryManager: injection adds the relevant
+# entries to its model input before each call. Inside a turn the agents still pass work
+# only through the pattern itself. persist=False: nothing is written to disk.
+MEMORY = TestMemoryStore(name="conversation", persist=False)
+
+
+def remember(user_message: str, final_answer: str) -> None:
+    """Save one turn of the conversation: the user's message and the final answer."""
+    async def save():
+        await MEMORY.add(f"User: {user_message}", {"role": "user"})
+        await MEMORY.add(f"Final answer: {final_answer}", {"role": "final_answer"})
+    asyncio.run(save())
 
 WRITER_PROMPT = (
     "You are an executive memo writer. Write a COMPLETE leadership memo with exactly these 5 labeled sections:\n"
@@ -39,12 +66,17 @@ CRITIC_PROMPT = (
 )
 
 
-def run_critic_refiner(brief: str) -> None:
-    """Run the Critic-Refiner GraphBuilder loop on a decision brief."""
-    writer = Agent(system_prompt=WRITER_PROMPT, callback_handler=None)
-    critic = Agent(system_prompt=CRITIC_PROMPT, callback_handler=None)
+def build_graph():
+    """Build the Critic-Refiner graph (same topology and limits as the notebook)."""
+    # search_tool_config=False: memory is recalled through injection only, so the
+    # agents keep exactly the tools they have in the notebook (none).
+    writer = Agent(name="writer", system_prompt=WRITER_PROMPT, callback_handler=None,
+                   memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
+    critic = Agent(name="critic", system_prompt=CRITIC_PROMPT, callback_handler=None,
+                   memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
 
     def needs_revision(state):
+        '''Returns True if the Critic said REVISION NEEDED.'''
         r = state.results.get("critic")
         return bool(r) and "revision needed" in str(r.result).lower()
 
@@ -57,44 +89,83 @@ def run_critic_refiner(brief: str) -> None:
     builder.set_max_node_executions(8)
     builder.set_execution_timeout(180)
     builder.reset_on_revisit(True)
+    return builder.build()
 
-    result = builder.build()(brief)
+
+def run_critic_refiner(brief: str) -> None:
+    """Run one turn of the conversation through a fresh Critic-Refiner graph."""
+    t0 = time.time()
+    result = build_graph()(brief)
+    elapsed = time.time() - t0
+
+    print(f"\nStatus: {result.status} | {elapsed:.1f}s")
+    print(f"Execution order: {[n.node_id for n in result.execution_order]}")
+    print()
+
+    # Show each Critic verdict
+    for node in result.execution_order:
+        if node.node_id == "critic":
+            verdict = str(node.result)[:120].strip()
+            print(f"  Critic verdict: {verdict}")
+
+    # Print the final approved memo
+    print("─" * 60)
+    for node in reversed(result.execution_order):
+        if node.node_id == "writer":
+            print(str(node.result))
+            remember(brief, str(node.result).strip())
+            break
+    print("─" * 60)
 
     writer_runs = sum(1 for n in result.execution_order if n.node_id == "writer")
     critic_runs = sum(1 for n in result.execution_order if n.node_id == "critic")
-    print(f"\nStatus: {result.status} | {writer_runs} drafts, {critic_runs} reviews")
+    print(f"Writer drafts: {writer_runs} | Critic reviews: {critic_runs}")
 
-    for node in result.execution_order:
-        if node.node_id == "critic":
-            print(f"  Critic: {str(node.result)[:80].strip()}")
 
-    for node in reversed(result.execution_order):
-        if node.node_id == "writer":
-            print(f"\nFinal memo:\n{'─'*60}")
-            print(str(node.result))
-            print("─" * 60)
+def read_message(prompt: str) -> str:
+    """Read one user message from the terminal.
+
+    input() stops at the first newline, so a pasted multi-line brief would be
+    sent as many separate runs. Pasted text arrives all at once, so every line
+    already waiting on stdin is joined into the same message.
+    Raises EOFError when stdin is closed.
+    """
+    if sys.platform == "win32":
+        # select() only works on sockets on Windows: fall back to one line.
+        return input(prompt).strip()
+    print(prompt, end="", flush=True)
+    fd = sys.stdin.fileno()
+    data = os.read(fd, 65536)
+    if not data:
+        raise EOFError
+    while select.select([fd], [], [], 0.1)[0]:
+        chunk = os.read(fd, 65536)
+        if not chunk:
             break
+        data += chunk
+    return data.decode("utf-8", errors="replace").strip()
 
 
 def main():
     print("Critic-Refiner — Strands GraphBuilder cycle")
-    print("Submit a decision brief. Type 'quit' to exit.\n")
+    print("Type or paste a decision brief (multi-line paste is one message) and press Enter, then ask follow-ups.")
+    print("The agents share a conversation memory. Type 'quit' to exit.")
+    print("Example: MarketNest Premium Tier: Option A $19.99/mo invite-only, B $14.99/mo 5% pilot, C $12.99/mo full launch. Target +15% CLV in 6 months. Budget $2M.\n")
 
-    DEFAULT_BRIEF = """
-DECISION BRIEF: MarketNest Premium Tier Launch
-Options: A (Exclusive $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
-Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
-"""
     while True:
         try:
-            user_input = input("Brief (Enter for default): ").strip()
+            user_input = read_message("Brief: ")
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             break
         if user_input.lower() in {"quit", "exit", "q"}:
             print("Goodbye!")
             break
-        run_critic_refiner(user_input if user_input else DEFAULT_BRIEF)
+        if not user_input:
+            continue
+
+        print("\nRunning Writer → Critic loop...")
+        run_critic_refiner(user_input)
         print()
 
 

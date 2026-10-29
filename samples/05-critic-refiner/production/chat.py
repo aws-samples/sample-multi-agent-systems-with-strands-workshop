@@ -13,8 +13,10 @@ Requires:
   WRITER_RUNTIME_ARN  (from source .env_arns)
   CRITIC_RUNTIME_ARN  (from source .env_arns)
 
+A multi-line brief pasted at once is sent as ONE message.
 Type 'quit' or Ctrl+C to stop.
 """
+import select
 import sys
 import os
 
@@ -23,11 +25,29 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from chain import run_chain, MAX_CYCLES
 
-DEFAULT_BRIEF = """
-DECISION BRIEF: MarketNest Premium Tier Launch
-Options: A (Exclusive $19.99/mo) | B (5% pilot $14.99/mo) | C (Full launch $12.99/mo)
-Success target: +15% CLV in 6 months | Budget: $2M | Deadline: 2027-01-31
-"""
+
+def read_message(prompt: str) -> str:
+    """Read one user message from the terminal.
+
+    input() stops at the first newline, so a pasted multi-line brief would be
+    sent as many separate requests. Pasted text arrives all at once, so every
+    line already waiting on stdin is joined into the same message.
+    Raises EOFError when stdin is closed.
+    """
+    if sys.platform == "win32":
+        # select() only works on sockets on Windows: fall back to one line.
+        return input(prompt).strip()
+    print(prompt, end="", flush=True)
+    fd = sys.stdin.fileno()
+    data = os.read(fd, 65536)
+    if not data:
+        raise EOFError
+    while select.select([fd], [], [], 0.1)[0]:
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            break
+        data += chunk
+    return data.decode("utf-8", errors="replace").strip()
 
 
 def main():
@@ -39,7 +59,7 @@ def main():
     conversation = 0
     while True:
         try:
-            user_input = input("Brief (Enter for default): ").strip()
+            user_input = read_message("Brief: ")
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             break
@@ -47,7 +67,10 @@ def main():
             print("Goodbye!")
             break
 
-        brief = user_input if user_input else DEFAULT_BRIEF
+        if not user_input:
+            continue
+
+        brief = user_input
         conversation += 1
         print(f"\n[Conversation {conversation}] Running Writer↔Critic loop...")
         print("─" * 60)

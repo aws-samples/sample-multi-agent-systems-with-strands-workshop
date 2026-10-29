@@ -30,8 +30,9 @@ import sys
 
 from strands.agent.a2a_agent import A2AAgent
 from strands.multiagent import GraphBuilder
+from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
 
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
+from a2a_utils import a2a_endpoint, make_a2a_config
 
 REGION = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 
@@ -42,6 +43,36 @@ DEFAULT_BRIEF = (
 )
 
 
+class OptionAnalyzerNode(MultiAgentBase):
+    """Graph node that sends one option assignment to the shared Analyzer runtime.
+
+    The three analyzer nodes call the SAME runtime, and GraphBuilder hands every node the
+    same input (brief + researcher findings). Locally each analyzer carries its option in
+    its own system prompt; a deployed runtime has one fixed prompt, so this custom node
+    (Graph "Custom Node Types") puts the assignment in front of the input it forwards to
+    the A2AAgent.
+    https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/
+    """
+
+    def __init__(self, agent: A2AAgent, option: str, name: str):
+        super().__init__()
+        self._agent = agent
+        self.name = name
+        self._assignment = (
+            f"Your assignment: evaluate ONLY Option {option} from the brief below. "
+            "Ignore the other options."
+        )
+
+    async def invoke_async(self, task, invocation_state=None, **kwargs):
+        # Graph passes a str for entry nodes and a list of content blocks for dependent nodes.
+        blocks = [{"text": task}] if isinstance(task, str) else list(task or [])
+        result = await self._agent.invoke_async([{"text": self._assignment}, *blocks])
+        return MultiAgentResult(
+            status=Status.COMPLETED,
+            results={self.name: NodeResult(result=result, status=Status.COMPLETED)},
+        )
+
+
 def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
     agent = A2AAgent(
         endpoint=a2a_endpoint(arn, REGION),
@@ -49,7 +80,6 @@ def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
         name=name,
         description=description,
     )
-    agent._agent_card = build_agent_card(arn, name, description, REGION)
     return agent
 
 
@@ -59,10 +89,11 @@ def run_chain(brief: str) -> str:
     analyzer_arn    = os.environ["ANALYZER_RUNTIME_ARN"]
     synthesizer_arn = os.environ["SYNTHESIZER_RUNTIME_ARN"]
     researcher  = _make_agent(researcher_arn,  "researcher",  "Market research specialist.")
-    # Same analyzer_arn used three times — parallel instances of the same specialist
-    analyzer_a  = _make_agent(analyzer_arn, "analyzer_a", "Option A analyst ($19.99/mo).")
-    analyzer_b  = _make_agent(analyzer_arn, "analyzer_b", "Option B analyst ($14.99/mo).")
-    analyzer_c  = _make_agent(analyzer_arn, "analyzer_c", "Option C analyst ($12.99/mo).")
+    # Same analyzer_arn used three times — parallel instances of the same specialist,
+    # each told which option to evaluate (see OptionAnalyzerNode)
+    analyzer_a  = OptionAnalyzerNode(_make_agent(analyzer_arn, "analyzer_a", "Option A analyst ($19.99/mo)."), "A", "analyzer_a")
+    analyzer_b  = OptionAnalyzerNode(_make_agent(analyzer_arn, "analyzer_b", "Option B analyst ($14.99/mo)."), "B", "analyzer_b")
+    analyzer_c  = OptionAnalyzerNode(_make_agent(analyzer_arn, "analyzer_c", "Option C analyst ($12.99/mo)."), "C", "analyzer_c")
     synthesizer = _make_agent(synthesizer_arn, "synthesizer", "Executive memo writer.")
 
     builder = GraphBuilder()

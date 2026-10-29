@@ -16,7 +16,7 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphB
 | File | Purpose |
 |------|---------|
 | `module-04.ipynb` | Step-by-step notebook: setup → research → fork → join → synthesize → metrics |
-| `chat.py` | Run the parallel pipeline interactively |
+| `chat.py` | Run the same parallel pipeline interactively, with conversation memory across turns |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 
 ## Key concepts
@@ -29,9 +29,9 @@ A pipeline that forks three Option Analyzers (A, B, C) in parallel using `GraphB
 
 ## Strands Agents SDK
 
-Parallel fork-join uses [`GraphBuilder`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`.
+Parallel fork-join uses [`GraphBuilder`](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) from `strands.multiagent`.
 Nodes that share the same predecessor and have no dependency on each other are detected automatically and dispatched concurrently.
-See the [Graph documentation](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+See the [Graph documentation](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/index.md?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
 
 ```python
 from strands.multiagent import GraphBuilder
@@ -68,6 +68,18 @@ result = graph(DECISION_BRIEF)
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
+
+## Chat and conversation memory
+
+`chat.py` runs the same fork-join graph as the notebook and waits for you to type or paste a brief. A multi-line brief pasted at once (like `DECISION_BRIEF` in the notebook) is sent as one message. Ask follow-ups in the same session; type `quit` (or press Ctrl+C) to exit.
+
+Every turn builds the graph fresh, exactly like the notebook. The conversation is remembered with [Strands memory](https://strandsagents.com/docs/user-guide/sdk/memory/overview/):
+
+- One in-memory [`TestMemoryStore`](https://strandsagents.com/docs/user-guide/sdk/memory/test-memory-store/) (`persist=False`, nothing is written to disk) stores only two entries per turn: what you said and the final answer (the synthesizer's memo). Nothing the agents say to each other is stored.
+- Every agent gets its own `MemoryManager` over that store. [Context injection](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/) adds the relevant entries to the agent's model input before each call. `search_tool_config=False` keeps each agent's tools the same as in the notebook.
+- Inside a turn the agents still pass work to each other only through the graph edges (fork and join).
+
+`TestMemoryStore` uses keyword matching and is meant for prototyping. For production, use a managed store such as the [Bedrock Knowledge Base store](https://strandsagents.com/docs/user-guide/sdk/memory/bedrock-knowledge-base/).
 
 ## Prerequisites
 

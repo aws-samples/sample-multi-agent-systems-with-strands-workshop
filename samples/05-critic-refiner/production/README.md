@@ -72,6 +72,8 @@ python invoke.py "your brief here"
 python chat.py
 ```
 
+In `chat.py`, a multi-line brief pasted at once is sent as one message. Each brief runs the deployed chain independently, and an empty line is ignored. Type `quit` (or press Ctrl+C) to exit.
+
 ---
 
 ## Sample brief
@@ -108,5 +110,5 @@ AgentCore sends all telemetry to **Amazon CloudWatch**:
 
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
-- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/)
+- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/)
 - [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)

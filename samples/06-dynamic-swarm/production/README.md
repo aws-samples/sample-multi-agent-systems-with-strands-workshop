@@ -4,13 +4,13 @@ Deploy the Pattern 4: Dynamic Swarm to Amazon Bedrock AgentCore Runtime using th
 
 ![Dynamic Swarm production: User invokes the HTTP Orchestrator Runtime, which hands off via A2A to four specialist runtimes (Monitor, Network Specialist, DB Admin, Resolver); traces flow to AgentCore Observability and Amazon CloudWatch](./architecture.png)
 
-**Pattern:** Researcher, Analyst, and Writer agents hand off autonomously. The LLM Orchestrator decides routing at runtime.
+**Pattern:** Monitor, Network Specialist, DB Admin, and Resolver agents hand off autonomously (IT incident response). The LLM Orchestrator decides routing at runtime.
 
 **Strands primitive:** `Agent(tools=[])` with A2A specialists
 
-> **Production note:** The Strands [`Swarm`](https://strandsagents.com/docs/user-guide/concepts/multi-agent/swarm/) class requires agents to be local objects in the same process — it injects a `handoff_to_agent` tool into each agent's `tool_registry`. In production, each specialist runs in a separate AgentCore Runtime container communicating via A2A protocol. [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) wraps the remote endpoint as a client and does not expose `tool_registry`, so the Swarm class cannot be used directly across runtimes today.
+> **Production note:** The Strands [`Swarm`](https://strandsagents.com/docs/user-guide/sdk/multi-agent/swarm/) class requires agents to be local objects in the same process — it injects a `handoff_to_agent` tool into each agent's `tool_registry`. In production, each specialist runs in a separate AgentCore Runtime container communicating via A2A protocol. [`A2AAgent`](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md) wraps the remote endpoint as a client and does not expose `tool_registry`, so the Swarm class cannot be used directly across runtimes today.
 >
-> This deployment achieves equivalent semantics: the orchestrator LLM receives all three specialists as `@tool` functions backed by `A2AAgent` calls and decides routing autonomously at runtime — the same emergent behavior as a Swarm, implemented as Agent-as-Tool over A2A.
+> This deployment achieves equivalent semantics: the orchestrator LLM receives all four specialists as `@tool` functions backed by `A2AAgent` calls and decides routing autonomously at runtime — the same emergent behavior as a Swarm, implemented as Agent-as-Tool over A2A.
 
 ---
 
@@ -89,17 +89,22 @@ python chat.py \
   --prompt "CPU spike on db-prod-01. Disk I/O normal. Incident started 10 min ago."
 ```
 
+In interactive mode, a multi-line brief pasted at once is sent as one message, and an empty line is ignored. Type `quit` (or press Ctrl+C) to exit.
+
 ---
 
 ## Sample brief
 
 ```
-MarketNest Premium Tier: Options A ($19.99/mo invite-only), B ($14.99/mo 5% pilot),
-C ($12.99/mo full launch). Target: +15% CLV in 6 months. Budget: $2M.
+INCIDENT: E-Commerce Checkout Degradation. Checkout API latency 8200ms (baseline 450ms),
+error rate 12% (HTTP 5xx on /api/checkout), DB connection pool 95% utilized (baseline 40%).
+Started 15 minutes after deployment v2.4.1. Investigate root cause and produce a resolution plan.
 ```
 
-First call: 1-2 min (cold start).
-Subsequent calls: 15-30s (warm containers).
+First call: 3-5 min (cold start of 5 runtimes).
+Subsequent calls: 2-4 min (warm containers; each turn runs Monitor → specialists → Resolver).
+
+Type `quit` to exit `chat.py`.
 
 ---
 
@@ -125,6 +130,6 @@ AgentCore sends all telemetry to **Amazon CloudWatch**:
 
 - [AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
 - [AgentCore A2A protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
-- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/)
-- [Strands A2A Agent-as-Tool](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/#as-a-tool)
+- [Strands Swarm](https://strandsagents.com/docs/user-guide/sdk/multi-agent/swarm/)
+- [Strands A2A Agent-as-Tool](https://strandsagents.com/docs/user-guide/sdk/multi-agent/agent-to-agent/#as-a-tool)
 - [bedrock-agentcore Python SDK](https://pypi.org/project/bedrock-agentcore/)

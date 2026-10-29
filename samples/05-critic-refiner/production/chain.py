@@ -32,7 +32,7 @@ import threading
 
 from strands.agent.a2a_agent import A2AAgent
 
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
+from a2a_utils import a2a_endpoint, make_a2a_config, extract_a2a_text
 
 REGION     = os.environ.get("AWS_REGION") or os.environ["WRITER_RUNTIME_ARN"].split(":")[3]
 MAX_CYCLES = 4
@@ -44,68 +44,80 @@ DEFAULT_BRIEF = (
 )
 
 
-def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
+def _make_agent(arn: str, name: str, description: str) -> tuple:
+    """Return (A2AAgent, httpx client). The client is closed by run_chain when done."""
+    config = make_a2a_config(region=REGION)
+    # client_config's httpx client (SigV4) is used for both agent-card discovery and
+    # message sending, so A2AAgent resolves the card itself - no private attributes.
     agent = A2AAgent(
         endpoint=a2a_endpoint(arn, REGION),
-        client_config=make_a2a_config(region=REGION),
+        client_config=config,
         name=name,
         description=description,
     )
-    agent._agent_card = build_agent_card(arn, name, description, REGION)
-    return agent
+    return agent, config.httpx_client
 
 
-def _call(agent: A2AAgent, prompt: str, timeout: int = 300) -> str:
-    """Call an A2A agent in an isolated thread with a fresh event loop."""
-    result_holder: list = [None, None]
+async def _call(agent: A2AAgent, prompt: str, timeout: int = 300) -> str:
+    """Call an A2A agent (must run on the same event loop as the rest of the chain)."""
+    return extract_a2a_text(await asyncio.wait_for(agent.invoke_async(prompt), timeout=timeout))
 
-    def _run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result_holder[0] = loop.run_until_complete(agent.invoke_async(prompt))
-        except Exception as exc:
-            result_holder[1] = exc
-        finally:
-            loop.close()
 
-    t = threading.Thread(target=_run, daemon=True)
-    t.start()
-    t.join(timeout=timeout)
-    if t.is_alive():
-        raise TimeoutError(f"A2A call timed out after {timeout}s")
-    if result_holder[1] is not None:
-        raise result_holder[1]
-    return extract_a2a_text(result_holder[0])
+async def _run_chain_async(brief: str) -> str:
+    writer_arn = os.environ["WRITER_RUNTIME_ARN"]
+    critic_arn = os.environ["CRITIC_RUNTIME_ARN"]
+    writer, writer_http = _make_agent(writer_arn, "writer", "Produces and revises the executive memo.")
+    critic, critic_http = _make_agent(critic_arn, "critic", "Evaluates the memo: APPROVED or REVISION NEEDED.")
+
+    try:
+        # Step 1: Writer produces the first draft
+        draft = await _call(writer, brief)
+
+        for cycle in range(1, MAX_CYCLES + 1):
+            # Step 2: Critic evaluates
+            verdict = await _call(critic, draft)
+            print(f"  Cycle {cycle} — Critic: {verdict[:80].strip()}")
+
+            if verdict.strip().upper().startswith("APPROVED"):
+                return draft
+
+            # Step 3: Writer revises — passes brief + previous draft + feedback explicitly
+            revision_prompt = (
+                f"Original brief:\n{brief}\n\n"
+                f"Previous draft:\n{draft}\n\n"
+                f"Revision required:\n{verdict}"
+            )
+            draft = await _call(writer, revision_prompt)
+
+        return draft  # return last draft if max cycles reached
+    finally:
+        # Close the pooled HTTP connections on the loop that opened them.
+        await writer_http.aclose()
+        await critic_http.aclose()
 
 
 def run_chain(brief: str) -> str:
-    """Run the Generator↔Critic loop until APPROVED or MAX_CYCLES."""
-    writer_arn = os.environ["WRITER_RUNTIME_ARN"]
-    critic_arn = os.environ["CRITIC_RUNTIME_ARN"]
-    writer = _make_agent(writer_arn, "writer", "Produces and revises the executive memo.")
-    critic = _make_agent(critic_arn, "critic", "Evaluates the memo: APPROVED or REVISION NEEDED.")
+    """Run the Generator↔Critic loop until APPROVED or MAX_CYCLES.
 
-    # Step 1: Writer produces the first draft
-    draft = _call(writer, brief)
+    The whole loop runs on ONE event loop in an isolated thread (so it also works
+    inside Jupyter, which already has a running loop). All A2A calls must share
+    that loop: each A2AAgent reuses one pooled httpx client, and a client used
+    after its loop was closed fails with "Event loop is closed" on the 2nd call.
+    """
+    holder: list = [None, None]
 
-    for cycle in range(1, MAX_CYCLES + 1):
-        # Step 2: Critic evaluates
-        verdict = _call(critic, draft)
-        print(f"  Cycle {cycle} — Critic: {verdict[:80].strip()}")
+    def _run():
+        try:
+            holder[0] = asyncio.run(_run_chain_async(brief))
+        except BaseException as exc:  # re-raised in the caller's thread
+            holder[1] = exc
 
-        if verdict.strip().upper().startswith("APPROVED"):
-            return draft
-
-        # Step 3: Writer revises — passes brief + previous draft + feedback explicitly
-        revision_prompt = (
-            f"Original brief:\n{brief}\n\n"
-            f"Previous draft:\n{draft}\n\n"
-            f"Revision required:\n{verdict}"
-        )
-        draft = _call(writer, revision_prompt)
-
-    return draft  # return last draft if max cycles reached
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join()
+    if holder[1] is not None:
+        raise holder[1]
+    return holder[0]
 
 
 if __name__ == "__main__":

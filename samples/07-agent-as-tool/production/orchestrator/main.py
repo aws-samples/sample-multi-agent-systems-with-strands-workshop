@@ -18,6 +18,7 @@ AWS AgentCore A2A:
   https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
 """
 import asyncio
+import contextvars
 import logging
 import os
 import threading
@@ -29,7 +30,7 @@ from strands import Agent, tool
 
 import sys
 sys.path = [str(Path(__file__).parent)] + sys.path
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config, extract_a2a_text
+from a2a_utils import a2a_endpoint, make_a2a_config, extract_a2a_text
 
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()
@@ -49,10 +50,6 @@ ORCHESTRATOR_PROMPT = (
     "Execute all four steps. Pass relevant context from each specialist to the next."
 )
 
-_research_agents: dict = {}
-_finance_agents:  dict = {}
-_legal_agents:    dict = {}
-_writer_agents:   dict = {}
 _session_agents:  dict = {}
 _session_lock     = threading.Lock()
 
@@ -68,7 +65,10 @@ def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
             result_holder[1] = exc
         finally:
             loop.close()
-    t = threading.Thread(target=_run, daemon=True)
+    # Copy the request context so AgentCoreA2AAuth (which reads BedrockAgentCoreContext) still
+    # sees this request's session and actor ids inside the worker thread.
+    ctx = contextvars.copy_context()
+    t = threading.Thread(target=ctx.run, args=(_run,), daemon=True)
     t.start()
     t.join(timeout=timeout)
     if t.is_alive():
@@ -78,15 +78,17 @@ def _call_a2a(agent, prompt: str, timeout: int = 600) -> str:
     return extract_a2a_text(result_holder[0])
 
 
-def _get_a2a(cache, arn, name, desc):
-    if arn not in cache:
-        from strands.agent.a2a_agent import A2AAgent
-        a = A2AAgent(endpoint=a2a_endpoint(arn, REGION),
-                     client_config=make_a2a_config(region=REGION),
-                     name=name, description=desc)
-        a._agent_card = build_agent_card(arn, name, desc, REGION)
-        cache[arn] = a
-    return cache[arn]
+# A2AAgent objects are NOT cached: each one owns an httpx.AsyncClient (inside its
+# ClientConfig) whose pooled keep-alive connections belong to the event loop of the call
+# that opened them. _call_a2a closes its loop after every call, so a reused agent fails
+# with "RuntimeError: Event loop is closed" when it is called again within the keep-alive
+# window. A fresh agent per call avoids that.
+def _get_a2a(arn, name, desc):
+    from strands.agent.a2a_agent import A2AAgent
+    a = A2AAgent(endpoint=a2a_endpoint(arn, REGION),
+                 client_config=make_a2a_config(region=REGION),
+                 name=name, description=desc)
+    return a
 
 
 @tool
@@ -96,7 +98,7 @@ def research_agent(topic: str) -> str:
     Args:
         topic: The company or investment topic to research
     """
-    return _call_a2a(_get_a2a(_research_agents, RESEARCH_ARN, "research",
+    return _call_a2a(_get_a2a(RESEARCH_ARN, "research",
                                "Market research and competitive intelligence specialist."), topic)
 
 
@@ -108,7 +110,7 @@ def finance_agent(brief: str, research_context: str) -> str:
         brief: The original investment brief
         research_context: Market and company data from research_agent
     """
-    return _call_a2a(_get_a2a(_finance_agents, FINANCE_ARN, "finance",
+    return _call_a2a(_get_a2a(FINANCE_ARN, "finance",
                                "Financial analyst — ROI, unit economics, investment verdict."),
                      f"Brief:\n{brief}\n\nResearch:\n{research_context}")
 
@@ -120,7 +122,7 @@ def legal_agent(brief: str) -> str:
     Args:
         brief: The investment brief to review
     """
-    return _call_a2a(_get_a2a(_legal_agents, LEGAL_ARN, "legal",
+    return _call_a2a(_get_a2a(LEGAL_ARN, "legal",
                                "Legal and compliance reviewer — risks and due diligence flags."), brief)
 
 
@@ -134,7 +136,7 @@ def writer_agent(brief: str, research_context: str, financial_analysis: str, leg
         financial_analysis: Analysis from finance_agent
         legal_review: Risk review from legal_agent
     """
-    return _call_a2a(_get_a2a(_writer_agents, WRITER_ARN, "writer",
+    return _call_a2a(_get_a2a(WRITER_ARN, "writer",
                                "Investment memo writer — synthesizes all findings."),
                      f"Brief:\n{brief}\n\nResearch:\n{research_context}\n\n"
                      f"Financial:\n{financial_analysis}\n\nLegal:\n{legal_review}")

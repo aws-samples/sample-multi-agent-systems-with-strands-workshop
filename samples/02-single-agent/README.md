@@ -11,7 +11,7 @@ A single agent with three mock business intelligence tools that can look up comp
 | File | Purpose |
 |------|---------|
 | `module-02.ipynb` | Step-by-step notebook: tools → agent → loop inspection → ceiling demo |
-| `chat.py` | Interactive multi-turn chat in the terminal |
+| `chat.py` | Interactive multi-turn chat with the notebook's Strategy Advisor agent |
 | `decision_brief_tools.py` | Three mock `@tool` functions + MarketNest mock data |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 
@@ -44,14 +44,17 @@ uv run python chat.py
 
 Or open `module-02.ipynb` in VS Code / JupyterLab and run cells top to bottom.
 
+`chat.py` runs the Strategy Advisor from the notebook's main path (same system prompt and model) and waits for you to type or paste a situation. A multi-line text pasted at once (like `SITUATION_SUMMARY` in the notebook) is sent as one message. The chat keeps ONE `Agent` for the whole session, so follow-up questions build on earlier answers; `context_manager="auto"` keeps that growing history within the model's context window. Type `quit` (or press Ctrl+C) to exit.
+
 ## Model options
 
-Pass `model=BedrockModel(model_id="...")` to `Agent(...)` to switch models:
+The notebook and `chat.py` pin `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. To switch, change the `model_id` in `BedrockModel(model_id="...")`, for example:
 
-- `us.anthropic.claude-sonnet-4-20250514-v1:0` (default)
 - `us.anthropic.claude-haiku-4-5-20251001-v1:0`
 - `amazon.nova-pro-v1:0`
 - `amazon.nova-lite-v1:0`
+
+Use a model that is enabled in your account and Region.
 
 ## Next
 

@@ -31,6 +31,7 @@ Optional:
 """
 
 import asyncio
+import contextvars
 import concurrent.futures
 import logging
 import os
@@ -44,7 +45,7 @@ from strands import Agent, tool
 from strands.agent.a2a_agent import A2AAgent
 
 # a2a_utils.py is bundled alongside this file in the deployment ZIP
-from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
+from a2a_utils import a2a_endpoint, make_a2a_config
 
 logger = logging.getLogger(__name__)
 app    = BedrockAgentCoreApp()
@@ -68,10 +69,12 @@ ORCHESTRATOR_PROMPT = (
 # ── Per-session state ──────────────────────────────────────────────────────────
 # Keyed by session_id so each session has isolated history and actor identity.
 # Prevents actor ID contamination and conversation history leaks across sessions.
-_researchers:   dict[str, "A2AAgent"] = {}
-_analyzers:     dict[str, "A2AAgent"] = {}
-_critic_refs:   dict[str, "A2AAgent"] = {}
 _orchestrators: dict[str, "Agent"]    = {}
+
+# A2AAgent objects are NOT cached: each one owns an httpx.AsyncClient (inside its
+# ClientConfig) that binds to the event loop of the first call. _call_a2a closes its
+# loop after every call, so a cached agent fails on the next turn of the same session
+# with "RuntimeError: Event loop is closed". A fresh agent per call avoids that.
 
 
 def _current_session() -> tuple:
@@ -86,45 +89,33 @@ def _current_session() -> tuple:
 
 
 def _get_researcher(sid: str, aid: str) -> A2AAgent:
-    if sid not in _researchers:
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(RESEARCHER_ARN, REGION),
-            client_config=make_a2a_config(aid, REGION),
-            name="researcher",
-            description="Market research specialist.",
-        )
-        agent._agent_card = build_agent_card(RESEARCHER_ARN, "researcher",
-            "Market research specialist.", REGION)
-        _researchers[sid] = agent
-    return _researchers[sid]
+    agent = A2AAgent(
+        endpoint=a2a_endpoint(RESEARCHER_ARN, REGION),
+        client_config=make_a2a_config(aid, REGION),
+        name="researcher",
+        description="Market research specialist.",
+    )
+    return agent
 
 
 def _get_analyzer(sid: str, aid: str) -> A2AAgent:
-    if sid not in _analyzers:
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(ANALYZER_ARN, REGION),
-            client_config=make_a2a_config(aid, REGION),
-            name="analyzer",
-            description="Evaluates one decision option.",
-        )
-        agent._agent_card = build_agent_card(ANALYZER_ARN, "analyzer",
-            "Evaluates one decision option.", REGION)
-        _analyzers[sid] = agent
-    return _analyzers[sid]
+    agent = A2AAgent(
+        endpoint=a2a_endpoint(ANALYZER_ARN, REGION),
+        client_config=make_a2a_config(aid, REGION),
+        name="analyzer",
+        description="Evaluates one decision option.",
+    )
+    return agent
 
 
 def _get_critic_refiner(sid: str, aid: str) -> A2AAgent:
-    if sid not in _critic_refs:
-        agent = A2AAgent(
-            endpoint=a2a_endpoint(CRITIC_REFINER_ARN, REGION),
-            client_config=make_a2a_config(aid, REGION),
-            name="critic_refiner",
-            description="Writer-Critic quality loop for decision memos.",
-        )
-        agent._agent_card = build_agent_card(CRITIC_REFINER_ARN, "critic_refiner",
-            "Writer-Critic quality loop for decision memos.", REGION)
-        _critic_refs[sid] = agent
-    return _critic_refs[sid]
+    agent = A2AAgent(
+        endpoint=a2a_endpoint(CRITIC_REFINER_ARN, REGION),
+        client_config=make_a2a_config(aid, REGION),
+        name="critic_refiner",
+        description="Writer-Critic quality loop for decision memos.",
+    )
+    return agent
 
 
 def _call_a2a(agent: A2AAgent, prompt: str, timeout: int = 600) -> str:
@@ -146,7 +137,10 @@ def _call_a2a(agent: A2AAgent, prompt: str, timeout: int = 600) -> str:
         finally:
             loop.close()
 
-    t = threading.Thread(target=_run, daemon=True)
+    # Copy the request context so AgentCoreA2AAuth (which reads BedrockAgentCoreContext) still
+    # sees this request's session and actor ids inside the worker thread.
+    ctx = contextvars.copy_context()
+    t = threading.Thread(target=ctx.run, args=(_run,), daemon=True)
     t.start()
     t.join(timeout=timeout)
 
@@ -186,7 +180,7 @@ def parallel_analyzers(brief: str, research_context: str) -> str:
     # Run 3 concurrent A2A calls via ThreadPoolExecutor (each in its own event loop)
     sid, aid = _current_session()
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-        futures = [pool.submit(_call_a2a, _get_analyzer(sid, aid), p) for p in prompts]
+        futures = [pool.submit(contextvars.copy_context().run, _call_a2a, _get_analyzer(sid, aid), p) for p in prompts]
         results = [f.result(timeout=600) for f in futures]
     ra, rb, rc = results
     return f"OPTION A:\n{ra}\n\nOPTION B:\n{rb}\n\nOPTION C:\n{rc}"

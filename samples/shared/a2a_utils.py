@@ -139,31 +139,3 @@ def extract_a2a_text(result) -> str:
     except Exception:  # nosec B110
         pass
     return str(result)
-
-def build_agent_card(arn: str, name: str, description: str, region: str = REGION):
-    """Build a minimal A2A AgentCard for an AgentCore Runtime.
-
-    Pre-populating the AgentCard on an A2AAgent instance skips the unauthenticated
-    GET /.well-known/agent-card.json discovery call. The card only needs the correct
-    url field; all message sending uses the authenticated client_config.
-
-    A2AAgent.get_agent_card() short-circuits when _agent_card is already set:
-      https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/
-
-    Usage:
-        agent = A2AAgent(endpoint=..., client_config=...)
-        agent._agent_card = build_agent_card(arn, "researcher", "Market research specialist")
-    """
-    from a2a.types import AgentCard, AgentCapabilities, AgentSkill
-
-    url = a2a_endpoint(arn, region)
-    return AgentCard(
-        name=name,
-        description=description,
-        url=url,
-        version="1.0.0",
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[AgentSkill(id="main", name=name, description=description, tags=[])],
-        defaultInputModes=["text"],
-        defaultOutputModes=["text"],
-    )

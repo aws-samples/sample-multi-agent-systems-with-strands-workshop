@@ -111,6 +111,8 @@ python chat.py \
   --prompt "Analyze MarketNest pricing options A, B, C"
 ```
 
+In interactive mode, a multi-line brief pasted at once is sent as one message, and an empty line is ignored. Type `quit` (or press Ctrl+C) to exit.
+
 `actorId` format requirements:
 - Start with alphanumeric: `[a-zA-Z0-9]`
 - Remaining chars: alphanumeric, hyphens, underscores, slashes, colons: `[a-zA-Z0-9-_/]*`

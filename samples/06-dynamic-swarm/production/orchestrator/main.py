@@ -19,7 +19,7 @@ References:
   Strands A2AAgent: https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/
   AgentCore A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
 """
-import asyncio, logging, os, threading
+import asyncio, contextvars, logging, os, threading
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from strands import Agent, tool
@@ -69,7 +69,10 @@ def _call_a2a(agent, prompt: str, timeout: int = 300) -> str:
             result_holder[1] = exc
         finally:
             loop.close()
-    t = threading.Thread(target=_run, daemon=True)
+    # Copy the request context so AgentCoreA2AAuth (which reads BedrockAgentCoreContext) still
+    # sees this request's session and actor ids inside the worker thread.
+    ctx = contextvars.copy_context()
+    t = threading.Thread(target=ctx.run, args=(_run,), daemon=True)
     t.start()
     t.join(timeout=timeout)
     if t.is_alive():
@@ -82,10 +85,9 @@ def _call_a2a(agent, prompt: str, timeout: int = 300) -> str:
 def _get_a2a(cache, arn, name, desc, aid):
     if aid not in cache:
         from strands.agent.a2a_agent import A2AAgent
-        from a2a_utils import a2a_endpoint, build_agent_card, make_a2a_config
+        from a2a_utils import a2a_endpoint, make_a2a_config
         a = A2AAgent(endpoint=a2a_endpoint(arn, REGION), client_config=make_a2a_config(aid, REGION),
                      name=name, description=desc)
-        a._agent_card = build_agent_card(arn, name, desc, REGION)
         cache[aid] = a
     return cache[aid]
 

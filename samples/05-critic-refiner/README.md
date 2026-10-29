@@ -28,7 +28,7 @@ The cycle edge `add_edge("critic", "writer", condition=needs_revision)` routes f
 | File | Purpose |
 |------|---------|
 | `module-05.ipynb` | Step-by-step notebook: Writer + Critic agents → GraphBuilder cycle → run → inspect |
-| `chat.py` | Run the critic-refiner interactively from the terminal |
+| `chat.py` | Run the same critic-refiner loop interactively, with conversation memory across turns |
 | `requirements.txt` | `strands-agents>=1.52.0` |
 | `production/` | Deploy Writer + Critic as separate A2A runtimes |
 
@@ -72,7 +72,7 @@ for node in reversed(result.execution_order):
         break
 ```
 
-See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/).
+See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/).
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
@@ -93,6 +93,18 @@ The condition function parses the Critic's text. The Critic **must** respond wit
 uv pip install -r requirements.txt
 uv run python chat.py
 ```
+
+## Chat and conversation memory
+
+`chat.py` runs the same Writer ↔ Critic graph as the notebook (including `reset_on_revisit(True)`) and waits for you to type or paste a brief. A multi-line brief pasted at once (like `DECISION_BRIEF` in the notebook) is sent as one message. Ask follow-ups in the same session; type `quit` (or press Ctrl+C) to exit.
+
+Every turn builds the graph fresh, exactly like the notebook. The conversation is remembered with [Strands memory](https://strandsagents.com/docs/user-guide/sdk/memory/overview/):
+
+- One in-memory [`TestMemoryStore`](https://strandsagents.com/docs/user-guide/sdk/memory/test-memory-store/) (`persist=False`, nothing is written to disk) stores only two entries per turn: what you said and the final answer (the last writer memo). Drafts and critic verdicts are not stored.
+- Writer and Critic each get their own `MemoryManager` over that store. [Context injection](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/) adds the relevant entries to the model input before each call. Injection does not live in the agent's messages, so it still works after `reset_on_revisit` clears a revisited node. `search_tool_config=False` keeps the agents' tools the same as in the notebook (none).
+- Inside a turn the agents still pass work to each other only through the graph edges.
+
+`TestMemoryStore` uses keyword matching and is meant for prototyping. For production, use a managed store such as the [Bedrock Knowledge Base store](https://strandsagents.com/docs/user-guide/sdk/memory/bedrock-knowledge-base/).
 
 ## Production
 
