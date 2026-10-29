@@ -31,6 +31,10 @@ if not REGION:
 # It is never set, so wait() always blocks until the timeout expires.
 _POLL = threading.Event()
 
+# Custom header that carries the user's actor id (chat.py → orchestrator → specialists).
+# Every runtime allowlists it in create_runtime(); AgentCore drops custom headers otherwise.
+ACTOR_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"
+
 
 def _wait(seconds: int) -> None:
     _POLL.wait(timeout=seconds)
@@ -273,6 +277,11 @@ def create_runtime(
         },
         roleArn=role_arn,
         networkConfiguration={"networkMode": "PUBLIC"},
+        # AgentCore forwards custom request headers to the container only when they
+        # are allowlisted. chat.py and the orchestrators send the actor id in this
+        # header; without the allowlist every request arrives as "default-user".
+        # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-header-allowlist.html
+        requestHeaderConfiguration={"requestHeaderAllowlist": [ACTOR_HEADER]},
     )
     if env_vars:
         kwargs["environmentVariables"] = env_vars
@@ -300,6 +309,7 @@ def create_runtime(
                         "agentRuntimeArtifact": kwargs["agentRuntimeArtifact"],
                         "roleArn": kwargs["roleArn"],
                         "networkConfiguration": kwargs["networkConfiguration"],
+                        "requestHeaderConfiguration": kwargs["requestHeaderConfiguration"],
                     }
                     if env_vars:
                         update_kwargs["environmentVariables"] = env_vars
