@@ -128,7 +128,8 @@ def ensure_runtime_role(
       2. iam:GetRole by role_name (role already exists from a previous run)
       3. iam:CreateRole (requires iam:CreateRole permission)
 
-    can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime.
+    can_invoke_runtimes=True adds bedrock-agentcore:InvokeAgentRuntime and
+    bedrock-agentcore:GetAgentCard (A2AAgent reads the specialist's agent card first).
     memory_id adds AgentCore Memory data-plane permissions for that memory resource.
     """
     # 1. Env var override — skip role creation only if the role actually exists.
@@ -204,9 +205,12 @@ def ensure_runtime_role(
     ]
     if can_invoke_runtimes:
         resource = specialist_arns if specialist_arns else f"arn:aws:bedrock-agentcore:{region}:{account}:runtime/*"
+        # A2AAgent fetches each specialist's agent card before invoking it, and
+        # that call is its own IAM action (GetAgentCard), separate from
+        # InvokeAgentRuntime. Without it the card request returns 403.
         statements.append({
             "Effect": "Allow",
-            "Action": "bedrock-agentcore:InvokeAgentRuntime",
+            "Action": ["bedrock-agentcore:InvokeAgentRuntime", "bedrock-agentcore:GetAgentCard"],
             "Resource": resource,
         })
     if memory_id:
