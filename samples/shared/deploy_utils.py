@@ -206,6 +206,16 @@ def ensure_runtime_role(
             "Action": ["s3:GetObject", "s3:ListBucket"],
             "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
         },
+        # The first call to a third-party model (e.g. Anthropic) in an account makes
+        # Amazon Bedrock auto-subscribe to it in AWS Marketplace, and the caller needs
+        # these actions for that to succeed. In a fresh workshop account the first call
+        # can come from a runtime, so its role needs them too ("Request access to
+        # models" in the Bedrock User Guide). Resource "*": no resource-level support.
+        {
+            "Effect": "Allow",
+            "Action": ["aws-marketplace:ViewSubscriptions", "aws-marketplace:Subscribe"],
+            "Resource": "*",
+        },
     ]
     if can_invoke_runtimes:
         resource = specialist_arns if specialist_arns else f"arn:aws:bedrock-agentcore:{region}:{account}:runtime/*"
