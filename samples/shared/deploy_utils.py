@@ -11,6 +11,8 @@ IAM role resolution order (for ensure_runtime_role):
 
 Workshop Studio: set AGENTCORE_RUNTIME_ROLE_ARN and AGENTCORE_ORCHESTRATOR_ROLE_ARN
 to pre-created role ARNs so deploy.py never needs iam:CreateRole.
+If AGENTCORE_PERMISSIONS_BOUNDARY_ARN is set (the Workshop Studio Kiro IDE sets it),
+created roles carry that permissions boundary.
 """
 import io, json, os, tempfile, threading, time, warnings, zipfile
 from pathlib import Path
@@ -149,25 +151,37 @@ def ensure_runtime_role(
         except iam_client.exceptions.NoSuchEntityException:
             pass  # Role was deleted (cleanup ran) — fall through to recreate it
 
-    # 2. Get or create the role shell (trust policy only, no inline policy yet)
+    # 2. Get or create the role shell (trust policy only, no inline policy yet).
+    # aws:SourceAccount / aws:SourceArn follow the trust policy in "IAM Permissions for
+    # AgentCore Runtime" (AgentCore devguide) and prevent the confused-deputy problem.
     trust = json.dumps({
         "Version": "2012-10-17",
         "Statement": [{
             "Effect": "Allow",
             "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
             "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {"aws:SourceAccount": account},
+                "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account}:*"},
+            },
         }],
     })
+    # Workshop Studio accounts only allow creating roles that carry the workshop permissions
+    # boundary; the Kiro IDE environment exports its ARN. Unset elsewhere (own account).
+    create_kwargs = {
+        "RoleName": role_name,
+        "AssumeRolePolicyDocument": trust,
+        "Description": "Execution role for AgentCore Runtime",
+    }
+    boundary_arn = os.environ.get("AGENTCORE_PERMISSIONS_BOUNDARY_ARN")
+    if boundary_arn:
+        create_kwargs["PermissionsBoundary"] = boundary_arn
     newly_created = False
     try:
         role_arn = iam_client.get_role(RoleName=role_name)["Role"]["Arn"]
     except iam_client.exceptions.NoSuchEntityException:
         try:
-            role_arn = iam_client.create_role(
-                RoleName=role_name,
-                AssumeRolePolicyDocument=trust,
-                Description="Execution role for AgentCore Runtime",
-            )["Role"]["Arn"]
+            role_arn = iam_client.create_role(**create_kwargs)["Role"]["Arn"]
             newly_created = True
         except botocore.exceptions.ClientError as e:
             code = e.response["Error"]["Code"]

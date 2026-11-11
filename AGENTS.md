@@ -73,6 +73,11 @@ samples/
   `main.py` (single-runtime variant), `chain.py` or `orchestrator/` (coordinator), and
   `specialists/<name>/main.py` (one A2A runtime each).
 - A2A helpers live in `shared/a2a_utils.py` and each `production/` tree.
+- `shared/deploy_utils.ensure_runtime_role()` creates execution roles with the AgentCore
+  devguide trust policy (`aws:SourceAccount` + `aws:SourceArn`). If
+  `AGENTCORE_PERMISSIONS_BOUNDARY_ARN` is set (the Workshop Studio Kiro IDE exports it), the
+  role is created with that permissions boundary; the workshop participant policy rejects
+  roles without it. Leave it unset in your own account.
 
 ## Local vs production
 
