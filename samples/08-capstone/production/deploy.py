@@ -81,6 +81,7 @@ def create_memory(ctl, prefix: str) -> str:
             "STM stores conversation events; SEMANTIC strategy extracts user facts into LTM."
         ),
         eventExpiryDuration=30,   # keep STM events for 30 days
+        tags=u.WORKSHOP_TAGS,
         memoryStrategies=[
             {
                 "semanticMemoryStrategy": {

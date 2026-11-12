@@ -37,6 +37,10 @@ _POLL = threading.Event()
 # Every runtime allowlists it in create_runtime(); AgentCore drops custom headers otherwise.
 ACTOR_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actor-Id"
 
+# Tag on every runtime and memory the samples create. The Workshop Studio policy only allows
+# CreateAgentRuntime / CreateMemory with this tag; it also makes the resources easy to find.
+WORKSHOP_TAGS = {"workshop": "multi-agent-systems-with-strands"}
+
 
 def _wait(seconds: int) -> None:
     _POLL.wait(timeout=seconds)
@@ -306,6 +310,7 @@ def create_runtime(
         # header; without the allowlist every request arrives as "default-user".
         # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-header-allowlist.html
         requestHeaderConfiguration={"requestHeaderAllowlist": [ACTOR_HEADER]},
+        tags=WORKSHOP_TAGS,
     )
     if env_vars:
         kwargs["environmentVariables"] = env_vars
