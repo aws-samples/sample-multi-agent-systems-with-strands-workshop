@@ -9,7 +9,7 @@ Architecture:
 No orchestrator runtime is deployed. The sequential chain is coordinated
 locally by chain.py using Strands GraphBuilder with A2AAgent nodes.
 
-Strands GraphBuilder: https://strandsagents.com/docs/user-guide/concepts/multi-agent/graph/
+Strands GraphBuilder: https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/
 AWS AgentCore A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
 
 IAM role (created once per prefix, reused by all specialists):

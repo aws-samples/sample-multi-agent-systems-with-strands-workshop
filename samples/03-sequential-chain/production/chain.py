@@ -8,9 +8,10 @@ in fixed sequential order:
 
 Each node's output becomes the next node's input — the chain.
 
-This is intentionally simple Python code, not a deployed runtime.
-For a deterministic pipeline with no LLM routing decisions, a lightweight
-coordinator script is enough.
+This is the same GraphBuilder chain as module-03.ipynb, but its nodes are
+A2AAgent clients for the deployed runtimes: Strands graphs accept remote A2A
+agents as nodes. chain.py runs locally; it is not a deployed runtime. For a
+deterministic pipeline with no LLM routing decisions, that is enough.
 
 > NOTE — production alternatives for this coordination layer:
 >   - AWS Lambda      : stateless, event-driven, no servers to manage
@@ -25,7 +26,7 @@ Required env vars (set by deploy.py or manually):
   AWS_REGION (optional, defaults to the region in the runtime ARNs)
 
 Usage:
-  python chain.py                   # uses default demo brief
+  python chain.py                   # uses the shared DECISION_BRIEF
   python chain.py "your brief here"
 """
 import os
@@ -36,24 +37,21 @@ from strands.multiagent import GraphBuilder
 
 from a2a_utils import a2a_endpoint, make_a2a_config
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "shared"))
+from decision_brief import DECISION_BRIEF
+
 REGION = os.environ.get("AWS_REGION") or os.environ["RESEARCHER_RUNTIME_ARN"].split(":")[3]
 
-DEFAULT_BRIEF = (
-    "MarketNest Premium Tier: Options A ($19.99/mo invite-only), "
-    "B ($14.99/mo 5% pilot), C ($12.99/mo full launch). "
-    "Target: +15% CLV in 6 months. Budget: $2M."
-)
+DEFAULT_BRIEF = DECISION_BRIEF
 
 
 def _make_agent(arn: str, name: str, description: str) -> A2AAgent:
-    agent = A2AAgent(
+    return A2AAgent(
         endpoint=a2a_endpoint(arn, REGION),
         client_config=make_a2a_config(region=REGION),
         name=name,
         description=description,
     )
-    # Pre-populate agent card to skip unauthenticated discovery call
-    return agent
 
 
 def run_chain(brief: str) -> str:
@@ -74,11 +72,7 @@ def run_chain(brief: str) -> str:
     builder.set_execution_timeout(600)
 
     result = builder.build()(brief)
-
-    for node in reversed(result.execution_order):
-        if node.node_id == "synthesizer":
-            return str(node.result).strip()
-    return str(result).strip()
+    return str(result.results["synthesizer"].result).strip()
 
 
 if __name__ == "__main__":

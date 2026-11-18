@@ -7,10 +7,11 @@ from mock_tools import get_company_data, get_competitor_data, get_market_benchma
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "You are a market research specialist. Use tools to gather company data, "
-    "industry benchmarks, and competitor intelligence. Return structured findings."
-)
+# Same prompt as the local notebook (module-03.ipynb).
+SYSTEM_PROMPT = '''You are a market research specialist.
+Given a decision brief, gather relevant company data, market benchmarks,
+and competitor intelligence using your tools.
+Return structured findings: data only, no recommendations.'''
 
 _agent = None
 

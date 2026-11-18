@@ -1,8 +1,8 @@
 """Interactive multi-turn chat for Module 2: Single Agent.
 
 The notebook runs the agent one cell at a time. This script wraps the same
-agent in a loop so you can hold a real multi-turn conversation in the terminal:
-the agent keeps its context across turns.
+agent (same system prompt and tools) in a loop so you can hold a real
+multi-turn conversation in the terminal: the agent keeps its context across turns.
 
 From the cloned repo root:
 
@@ -11,11 +11,12 @@ From the cloned repo root:
     python chat.py
 
 Type or paste your message and press Enter. A multi-line text pasted at once
-(like the Situation Summary in the notebook) is sent as ONE message.
+(like DECISION_BRIEF in samples/shared/decision_brief.py) is sent as ONE message.
 Type 'quit', 'exit', or Ctrl+C to stop.
 
-Model: same as the notebook. To switch, change the model_id below to another
-Amazon Bedrock model id (https://docs.aws.amazon.com/bedrock/latest/userguide/models-get-info.html).
+Model: no model= is passed, so the agent uses the Strands default on Amazon Bedrock
+(Claude Sonnet 4.6, global.anthropic.claude-sonnet-4-6). To switch, pass
+model=BedrockModel(model_id="...") with another model enabled in your account.
 """
 
 import os
@@ -23,9 +24,7 @@ import select
 import sys
 
 from strands import Agent
-from strands.models import BedrockModel
-
-model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 
 def read_message(prompt: str) -> str:
@@ -51,31 +50,21 @@ def read_message(prompt: str) -> str:
         data += chunk
     return data.decode("utf-8", errors="replace").strip()
 
-SYSTEM_PROMPT = '''
 
-You are a senior Corporate Strategy Advisor.
+SYSTEM_PROMPT = '''You are a senior Corporate Strategy Advisor for MarketNest.
+Use your tools to look up company data, market benchmarks, and competitor information.
+Never guess a number a tool can give you. If a metric is not available, write "Unknown".
 
-You will receive a Situation Summary. Produce an Executive Strategy Briefing with:
+For a quick question, answer in a few data-backed sentences.
 
+For a full decision brief, produce an Executive Strategy Briefing with these sections, in order:
 1) Recommendation (1-2 lines)
 2) Options considered (A/B/C)
-3) Tradeoffs (bullets: gain vs risk)
-4) Risks + mitigations (bullets)
-5) Assumptions + unknowns (bullets)
-6) Escalate? (Yes/No + reason)
-7) Next steps (owner + timeline bullets)
-
-Situation:
-{Scenario}
-
-Rules:
-- Do not invent metrics. If missing, write "Unknown".
-- Make tradeoffs explicit: "We gain X; we risk Y."
-- If constraints are unmet or approvals missing, set Escalate=Yes.
-- Keep sections in the same order.
-
-'''
-
+3) Tradeoffs: "We gain X; we risk Y."
+4) Risks + mitigations
+5) Assumptions + unknowns
+6) Escalate? (Yes/No + reason; Yes if constraints are unmet or approvals are missing)
+7) Next steps (owner + timeline)'''
 
 
 def main():
@@ -85,13 +74,13 @@ def main():
     # context window automatically (summarises + offloads as it fills).
     agent = Agent(
         system_prompt=SYSTEM_PROMPT,
-        model=model,
+        tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         context_manager="auto",
     )
 
     print("Strategy Advisor Agent  |  type 'quit' to exit")
-    print("Type or paste a situation (multi-line paste is one message) and ask follow-ups. Type 'quit' to exit.")
-    print("Example: We are considering a Premium Subscription Tier for MarketNest repeat buyers: A paid tier in metro zones, B lower-priced Plus tier, C convert loyalty members first. Decision in 2 weeks.\n")
+    print("Type or paste a decision brief or a question (multi-line paste is one message), then ask follow-ups.")
+    print("Example: MarketNest Premium Tier: Option A $19.99/mo invite-only, B $14.99/mo 5% pilot, C $12.99/mo full launch. Target +15% CLV in 6 months. Budget $2M.\n")
 
     while True:
         try:

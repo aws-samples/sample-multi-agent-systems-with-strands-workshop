@@ -1,6 +1,6 @@
 # Module 3: Sequential Chain
 
-**Pattern 1.** Break the single-agent ceiling with a 3-stage pipeline where each agent has one focused job and passes its output to the next.
+**Pattern 1.** Break the single-agent ceiling from Module 2: run the same decision brief through a fixed 3-stage pipeline where each agent has one focused job and passes its output to the next. The graph edges fix the order in code; in Module 4 an orchestrator agent chooses it instead.
 
 **Strands primitive:** `GraphBuilder` (Graph)
 
@@ -10,8 +10,9 @@
 
 ## What you'll build
 
-A 3-stage pipeline — Researcher → Analyst → Synthesizer — defined as a directed graph.
-Each node's output is automatically passed as input to the next node by the graph engine.
+A 3-stage pipeline, Researcher → Analyst → Synthesizer, defined as a directed graph.
+Each node receives the original brief plus the output of the node before it, so the
+Synthesizer works from the Analyst's output, not the raw research.
 Each agent has a narrow system prompt and sees only what it needs for its role.
 
 ## Files
@@ -20,16 +21,17 @@ Each agent has a narrow system prompt and sees only what it needs for its role.
 |------|---------|
 | `module-03.ipynb` | Step-by-step notebook: prompts → GraphBuilder → run → inspect |
 | `chat.py` | Run the same chain interactively, with conversation memory across turns |
-| `requirements.txt` | `strands-agents>=1.52.0` |
+| `requirements.txt` | `strands-agents>=1.65.0` |
 | `production/` | Deploy specialists to AgentCore Runtime; coordinate via `chain.py` |
 
 ## Key concepts
 
-- **GraphBuilder**: Strands primitive for deterministic multi-agent graphs (a directed acyclic graph of agents)
+- **GraphBuilder**: Strands primitive for multi-agent graphs; here a fixed sequence with an execution timeout
 - **`add_node` / `add_edge`**: declare the graph structure; the engine enforces execution order
-- **Output propagation**: each node's output is automatically passed as input to connected nodes
+- **Output propagation**: each node gets the original task plus the outputs of the nodes with edges into it
 - **`callback_handler=None`**: silent intermediate agents; display the final result explicitly
-- **Focused context**: no single agent holds everything — each sees only its stage's inputs
+- **Focused context**: no single agent holds everything; per-node token usage (`node.result.accumulated_usage`) shows what each stage cost
+- **Graph vs plain calls**: a short sequence also works as plain function calls (a workflow); the graph adds the timeout, `execution_order`, per-node results and room for parallel or conditional edges
 
 ## Strands GraphBuilder
 
@@ -47,14 +49,10 @@ builder.add_node(analyst,     "analyst")
 builder.add_node(synthesizer, "synthesizer")
 builder.add_edge("researcher", "analyst")
 builder.add_edge("analyst",    "synthesizer")
+builder.set_execution_timeout(300)
 
-result = builder.build()(brief)
-
-# Extract the final node's output
-for node in reversed(result.execution_order):
-    if node.node_id == "synthesizer":
-        print(str(node.result))
-        break
+result = builder.build()(DECISION_BRIEF)
+print(result.results["synthesizer"].result)
 ```
 
 See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/).
@@ -66,13 +64,13 @@ See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/sd
 ## Prerequisites
 
 - Python 3.10 or higher
-- Module 2: this module imports tools from `../02-single-agent/decision_brief_tools.py`
+- Module 2. This module imports tools from `../02-single-agent/decision_brief_tools.py` and the brief from `../shared/decision_brief.py`
 
 ## Run
 
 ```bash
-uv pip install -r requirements.txt
-uv run python chat.py
+pip install -r requirements.txt
+python chat.py
 ```
 
 ## Chat and conversation memory
@@ -89,4 +87,6 @@ Every turn builds the graph fresh, exactly like the notebook. The conversation i
 
 ## Next
 
-→ [Module 4: Parallel Fork-Join](../04-parallel-fork-join/)
+→ [Module 4: Agent-as-Tool](../04-agent-as-tool/): let an orchestrator agent choose the order of work instead of graph edges.
+
+Optional: [Parallel Fork-Join](../extra/04-parallel-fork-join/) runs the analysts in parallel with the same graph primitive.
