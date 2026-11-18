@@ -7,8 +7,10 @@ read `README.md` and `CONTRIBUTING.md` first.
 
 Sample code for the **Multi-Agent Systems with Strands** workshop. It teaches how to
 build multi-agent systems with the [Strands Agents SDK](https://strandsagents.com) on
-Amazon Bedrock, progressing from a single agent to five orchestration patterns and a
-capstone that combines them.
+Amazon Bedrock. The core workshop follows modules **01 → 02 → 03 → 04**: the agent
+loop, a single agent, graph-based orchestration, and agents as tools. Additional
+patterns and the capstone are optional modules in `samples/extra/`; they keep their
+original numbers, so `extra/04-parallel-fork-join` is not core module 04.
 
 Each module has a local version (notebook + `chat.py`) and a `production/` version that
 deploys to Amazon Bedrock AgentCore Runtime over the A2A protocol.
@@ -18,13 +20,18 @@ samples/
   01-foundations/         Agent primitives + the agent loop
   02-single-agent/        One agent with tools; the single-agent ceiling
   03-sequential-chain/    Pattern 1 — Researcher → Analyst → Synthesizer
-  04-parallel-fork-join/  Pattern 2 — fan out to analyzers, then join
-  05-critic-refiner/      Pattern 3 — writer ↔ critic cycle
-  06-dynamic-swarm/        Pattern 4 — autonomous handoffs
-  07-agent-as-tool/       Pattern 5 — orchestrator delegates to specialist tools
-  08-capstone/            All patterns combined
+  04-agent-as-tool/       Pattern 5 — orchestrator delegates to specialist tools
   shared/                 prompts, decision brief, A2A + deploy helpers
+  extra/
+    04-parallel-fork-join/  Pattern 2 — fan out to analyzers, then join
+    05-critic-refiner/      Pattern 3 — writer ↔ critic cycle
+    06-dynamic-swarm/        Pattern 4 — autonomous handoffs
+    08-capstone/            All patterns combined
 ```
+
+Keep the original module numbers. References below to modules 04–06 and 08 apply
+to their locations in `samples/extra/`. Shared deployment helpers remain in `samples/shared/`,
+and the mock data tools remain in `samples/02-single-agent/decision_brief_tools.py`.
 
 ## Golden rules
 
@@ -39,7 +46,9 @@ samples/
    are not orchestration.
 2. **Match the official docs.** Follow [strandsagents.com](https://strandsagents.com).
    The installed multi-agent primitives are `GraphBuilder` and `Swarm` — there is no
-   `Workflow` class; do not label `GraphBuilder` as a "Workflow". For conversation
+   `Workflow` class; do not label `GraphBuilder` as a "Workflow". (The docs' "workflow"
+   page means plain function calls in application code; module 03 says why it uses a
+   graph instead.) For conversation
    context use `Agent(context_manager="auto")`, not the legacy
    `SlidingWindowConversationManager` / `conversation_manager`.
 3. **Keep each module focused on its pattern.** Do not add memory, extra tools, or
@@ -53,7 +62,8 @@ samples/
 - **Region is never hardcoded.** Read it from the environment
   (`os.environ.get("AWS_REGION") or boto3.Session().region_name`), or derive it from a
   runtime ARN (`arn.split(":")[3]`). A silent `"us-east-1"` fallback is a bug.
-- **Model choice** is left to the Bedrock default; alternatives are shown in comments so
+- **Model choice** is left to the Strands Bedrock default (Claude Sonnet 4.6,
+  `global.anthropic.claude-sonnet-4-6`, in strands-agents 1.65); alternatives are shown in comments so
   the samples run at events that only enable specific models. If you pin a model, pin it
   everywhere consistently and say why.
 - Specialists set `callback_handler=None` so only the final result is printed.
@@ -61,7 +71,10 @@ samples/
   topology and limits. It waits for the user (no default prompt, an empty line is
   ignored, `quit`/`exit`/`q` or Ctrl+C exit). `read_message()` sends a multi-line paste
   as ONE message (Windows falls back to `input()`).
-- Chat memory. 02 and 07 keep one `Agent` for the session. 03–06 and 08 build the
+- **One scenario.** Modules 02, 03 and 04 run the same `DECISION_BRIEF` from
+  `shared/decision_brief.py` (04 appends an investment-committee request) over the mock
+  data in `02-single-agent/decision_brief_tools.py`. Keep their numbers consistent.
+- Chat memory. 02 and 04 keep one `Agent` for the session. 03 and the `extra/` modules build the
   Graph/Swarm fresh every turn, like the notebook, and share one
   `TestMemoryStore(persist=False)`. Each agent gets its own
   `MemoryManager(stores=[MEMORY], search_tool_config=False)` and reads only through
@@ -84,10 +97,15 @@ samples/
 - **Local** (`module-0X.ipynb`, `chat.py`): everything runs in one process; the
   `GraphBuilder`/`Swarm`/`@tool` primitives coordinate agents directly.
 - **Production** (`production/`): specialists are separate AgentCore Runtimes reached
-  over A2A. A coordinator threads context between them. When agents live in different
-  runtimes, an in-process graph cannot span them — an explicit A2A coordination loop is
-  the correct trade-off there, and the code says so in comments. Do not "fix" it into a
-  single-process graph.
+  over A2A. Reach them with Strands primitives, as locally: `GraphBuilder` accepts
+  `A2AAgent` nodes (03 `chain.py`), and an orchestrator `Agent` calls `A2AAgent`s from
+  `@tool` functions (04 `orchestrator/`). `A2AAgent` has no `as_tool()`, so
+  `delegate=True` is local-only; the production prompt asks the orchestrator to return the
+  writer's memo unchanged instead. Specialists use the same system prompts as the
+  notebook. `production/main.py` is an optional single-runtime variant of the notebook
+  (not deployed by `deploy.py`). Agent-as-Tool keeps its `m7` deploy prefix and
+  `m7-agent-as-tool` resource names: `m4` belongs to the optional Parallel Fork-Join, and
+  sharing a prefix would make their IAM roles collide.
 
 ## Running a sample
 

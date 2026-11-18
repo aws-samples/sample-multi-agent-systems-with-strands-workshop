@@ -1,3 +1,0 @@
-strands-agents>=1.52.0
-matplotlib
-networkx
