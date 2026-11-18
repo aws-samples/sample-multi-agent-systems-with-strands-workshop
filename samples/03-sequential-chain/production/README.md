@@ -30,13 +30,16 @@ it requires no LLM routing decisions, so a lightweight coordinator script is eno
 |------|---------|
 | `deploy.py` | Deploy 3 specialist runtimes (A2A) in parallel |
 | `cleanup.py` | Delete all runtimes, IAM roles, S3 objects |
-| `chain.py` | Sequential chain coordinator — runs locally via GraphBuilder |
+| `chain.py` | Sequential chain coordinator: the notebook's `GraphBuilder` chain with `A2AAgent` nodes, run locally (default brief: `shared/decision_brief.py`) |
 | `chat.py` | Interactive multi-turn chat (submit multiple briefs) |
 | `a2a_utils.py` | SigV4 auth and A2A utilities for chain.py |
 | `invoke.py` | Single invocation helper — wraps chain.py |
 | `specialists/researcher/main.py` | Researcher A2A runtime |
 | `specialists/analyst/main.py` | Analyst A2A runtime |
 | `specialists/synthesizer/main.py` | Synthesizer A2A runtime |
+| `main.py` | Optional single-runtime variant: the whole chain in one AgentCore HTTP runtime (not deployed by `deploy.py`) |
+
+The specialists use the same system prompts as `module-03.ipynb`.
 
 ---
 

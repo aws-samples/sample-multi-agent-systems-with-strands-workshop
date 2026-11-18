@@ -2,10 +2,10 @@
 
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
-Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Progress from a single-agent foundation through five production patterns: Sequential Chain, Parallel Fork-Join, Critic-Refiner, Dynamic Swarm, and Agent-as-Tool. Finish with a complete Strategy Recommendation Engine deployed on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/).
+Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Follow the core path **01 Foundations → 02 Single Agent → 03 Sequential Chain → 04 Agent-as-Tool** to explore the agent loop, graph-based orchestration, and specialist delegation. Modules 03 and 04 include deployments to [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/). Additional patterns and the capstone are available in [`samples/extra/`](./samples/extra/).
 
 ![Strands Agents](https://img.shields.io/badge/Strands_Agents-SDK-FF9900?logo=amazonaws&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Amazon Bedrock](https://img.shields.io/badge/Amazon_Bedrock-AgentCore-232F3E?logo=amazonaws&logoColor=white)
 ![Multi-Agent](https://img.shields.io/badge/Multi--Agent-Patterns-01A88D?logo=amazonaws&logoColor=white)
 ![License MIT-0](https://img.shields.io/badge/License-MIT--0-green.svg)
@@ -14,26 +14,37 @@ Build, deploy, and scale multi-agent systems using reusable patterns with the [S
 
 ## Modules
 
+Work through the core modules in order.
+
 | Module | Description | Strands Pattern | Production Protocol |
 |--------|-------------|-----------------|---------------------|
-| [01 Foundations](./samples/01-foundations/) | Strands agent loop, tools, callback handlers, and the single-agent ceiling | `Agent(tools=[...])` | n/a |
-| [02 Single Agent](./samples/02-single-agent/) | One Strategy Advisor agent on a full decision brief; inspect the agent loop and hit the single-agent ceiling | `Agent(system_prompt=...)` · `chat.py` keeps one agent with `context_manager="auto"` | n/a |
-| [03 Sequential Chain](./samples/03-sequential-chain/) | Researcher → Analyst → Synthesizer in fixed order; each stage passes output to the next | [`GraphBuilder`](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/index.md) DAG | `chain.py` local · Specialists: **A2A** |
-| [04 Parallel Fork-Join](./samples/04-parallel-fork-join/) | Researcher feeds three analyzers running simultaneously; results merged at the synthesizer | `GraphBuilder` DAG + parallel edges | `chain.py` local · Specialists: **A2A** |
-| [05 Critic-Refiner](./samples/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until `APPROVED` | `GraphBuilder` cycle + `set_max_node_executions` | `chain.py` local · Specialists: **A2A** |
-| [06 Dynamic Swarm](./samples/06-dynamic-swarm/) | Incident response: Monitor → Network Specialist / DB Admin → Resolver; path emerges at runtime | `Swarm` (local) · `Agent(tools=[...])` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [07 Agent-as-Tool](./samples/07-agent-as-tool/) | Investment analysis: LLM orchestrator delegates to Research, Finance, Legal, Writer specialists as `@tool` | `@tool` wrapping `Agent` + `A2AAgent` | Orchestrator: **HTTP** · Specialists: **A2A** |
-| [08 Capstone](./samples/08-capstone/) | Strategy Recommendation Engine: planner → analysis team Swarm (researcher, risk and demand analyzers, synthesizer ↔ reviewer) → evaluator → writer | `GraphBuilder` with a nested `Swarm` node (P1 + P2 + P3 + P4) | Orchestrator: **HTTP** · Specialists: **A2A** (different design, see its README) |
+| [01 Foundations](./samples/01-foundations/) | Strands agent primitives, a first tool, inspecting the agent loop, metrics, multi-turn | `Agent(tools=[...])` | n/a |
+| [02 Single Agent](./samples/02-single-agent/) | One Strategy Advisor agent with three business intelligence tools on the MarketNest decision brief; inspect the loop and hit the single-agent ceiling | `Agent(tools=[...], system_prompt=...)` · `chat.py` keeps one agent with `context_manager="auto"` | n/a |
+| [03 Sequential Chain](./samples/03-sequential-chain/) | Break the single-agent ceiling: the same brief through Researcher → Analyst → Synthesizer in a fixed order set by graph edges | [`GraphBuilder`](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) · `A2AAgent` nodes (prod) | `chain.py` local · Specialists: **A2A** |
+| [04 Agent-as-Tool](./samples/04-agent-as-tool/) | Investment analysis of the same brief: an LLM orchestrator delegates to Research, Finance, Legal and Writer specialists used as tools; the model picks the order | `@tool` wrapping `Agent` · `as_tool(delegate=True)` · `A2AAgent` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
 
-Each module from **03 to 08** includes a `production/` subfolder with a complete, deployable AgentCore Runtime architecture.
+Modules **03 and 04** include a `production/` subfolder.
+
+### Optional modules
+
+These keep their original numbers, so the optional Parallel Fork-Join is `extra/04-parallel-fork-join`, separate from core module 04.
+
+| Module | Description | Strands Pattern | Production Protocol |
+|--------|-------------|-----------------|---------------------|
+| [04 Parallel Fork-Join](./samples/extra/04-parallel-fork-join/) | Researcher feeds three analyzers running simultaneously; results merged at the synthesizer | `GraphBuilder` DAG + parallel edges | `chain.py` local · Specialists: **A2A** |
+| [05 Critic-Refiner](./samples/extra/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until `APPROVED` | `GraphBuilder` cycle + `set_max_node_executions` | `chain.py` local · Specialists: **A2A** |
+| [06 Dynamic Swarm](./samples/extra/06-dynamic-swarm/) | Incident response: Monitor → Network Specialist / DB Admin → Resolver; path emerges at runtime | `Swarm` (local) · `Agent(tools=[...])` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
+| [08 Capstone](./samples/extra/08-capstone/) | Strategy Recommendation Engine: planner → analysis team Swarm (researcher, risk and demand analyzers, synthesizer ↔ reviewer) → evaluator → writer | `GraphBuilder` with a nested `Swarm` node (P1 + P2 + P3 + P4) | Orchestrator: **HTTP** · Specialists: **A2A** (different design, see its README) |
+
+Each optional module includes its own `production/` deployment. See [`samples/extra/`](./samples/extra/).
 
 ---
 
 ## What you'll build
 
-The **Strategy Recommendation Engine**: a multi-agent system that takes a situation summary (company, options, constraints) and produces an executive strategy recommendation with options A/B/C, trade-offs, risks and mitigations, next steps, and a confidence score.
+A decision-memo system for one MarketNest decision brief: start with one agent using business intelligence tools, split the work into a Researcher → Analyst → Synthesizer pipeline with `GraphBuilder`, then let an orchestrator agent delegate to specialist agents used as tools.
 
-![Strategy Recommendation Engine: a Graph runs planner, then the analysis_team Swarm (researcher, risk_analyzer, demand_analyzer, synthesizer, reviewer), then evaluator and writer](./samples/08-capstone/multi-agent-using-pattern.png)
+The optional [capstone](./samples/extra/08-capstone/) combines additional patterns into a Strategy Recommendation Engine.
 
 ---
 
@@ -55,7 +66,7 @@ A single agent faces hard limits: one context window, one model's reasoning, and
 
 ## How the production protocols work
 
-Modules 03–08 each deploy **multiple AgentCore Runtimes** that communicate over two protocols:
+Core modules 03 and 04, and optional modules in `samples/extra/`, deploy **multiple AgentCore Runtimes**. Module 03 coordinates its A2A specialists locally with `chain.py`; module 04 uses an HTTP orchestrator runtime. The deployments use these protocols:
 
 ### HTTP protocol: Orchestrator Runtime
 
@@ -101,7 +112,7 @@ jupyter notebook module-01.ipynb
 
 ### Chat with a module from the terminal
 
-Modules 02–08 include a `chat.py` that runs the same agents as the notebook in an interactive loop:
+Core modules 02, 03 and 04, and all optional modules, include a `chat.py` that runs the same agents as the notebook in an interactive loop:
 
 ```bash
 cd samples/03-sequential-chain
@@ -111,13 +122,13 @@ python chat.py
 
 - The chat waits for you. It never sends a prompt on its own, and an empty line is ignored.
 - Type or paste your message. A multi-line brief pasted at once (like the `DECISION_BRIEF` in a notebook) is sent as one message.
-- Ask follow-ups in the same session: every chat remembers the conversation. Modules 02 and 07 keep one agent for the whole session. Modules 03–06 and 08 build the multi-agent system fresh on every turn, as the notebook does, and share a [Strands memory](https://strandsagents.com/docs/user-guide/sdk/memory/overview/) that holds only your messages and the final answers.
+- Ask follow-ups in the same session: every chat remembers the conversation. Modules 02 and 04 keep one agent for the whole session. Module 03 and the optional Parallel Fork-Join, Critic-Refiner, Dynamic Swarm and Capstone modules build the multi-agent system fresh on every turn, as the notebook does, and share a [Strands memory](https://strandsagents.com/docs/user-guide/sdk/memory/overview/) that holds only your messages and the final answers.
 - Type `quit` (or press Ctrl+C) to exit.
 
-For production modules with deployed runtimes (06–08):
+For module 04 with deployed runtimes (also available in the optional Dynamic Swarm and Capstone modules):
 
 ```bash
-cd samples/06-dynamic-swarm/production
+cd samples/04-agent-as-tool/production
 python chat.py --actor-id <your-id> --runtime-arn <RUNTIME_ARN>
 ```
 
@@ -125,25 +136,25 @@ python chat.py --actor-id <your-id> --runtime-arn <RUNTIME_ARN>
 
 ## How to deploy a production module
 
-Each module from 03 to 08 has a `production/` subfolder. The deployment uses boto3 directly, no CLI required.
+Core modules 03 and 04 and all optional modules have a `production/` subfolder. The deployment uses boto3 directly, no CLI required.
 
 ```bash
-cd samples/06-dynamic-swarm/production   # or 07, 08
+cd samples/04-agent-as-tool/production
 
 # Step 1: Open the notebook and run all cells (installs deps, creates IAM roles, deploys)
 jupyter notebook production-deploy.ipynb
 
 # Or deploy from the terminal:
-python deploy.py --name-prefix m6       # deploys all runtimes
-python invoke.py <RUNTIME_ARN>          # single invocation (modules 06–08)
-
-# Modules 03–05: chain.py coordinates locally after deploy
-source .env_arns && python chain.py
+python deploy.py --name-prefix m7       # deploys all runtimes (m7 is this module's prefix; m4 is taken by the optional Parallel Fork-Join)
+python invoke.py <RUNTIME_ARN>          # single invocation (module 04; optional Dynamic Swarm and Capstone)
 
 # Cleanup:
-python cleanup.py --name-prefix m6 --dry-run   # preview
-python cleanup.py --name-prefix m6             # delete all resources
+python cleanup.py --name-prefix m7 --dry-run   # preview
+python cleanup.py --name-prefix m7             # delete all resources
 ```
+
+For module 03, deploy from `samples/03-sequential-chain/production`, then run
+`source .env_arns && python chain.py` there to coordinate its specialists locally.
 
 What `deploy.py` creates per module:
 
@@ -151,7 +162,7 @@ What `deploy.py` creates per module:
 |----------|--------|
 | S3 bucket | `bedrock-agentcore-deploy-<account>-<region>` (stores code ZIPs) |
 | IAM roles | `workshop-agentcore-<prefix>-runtime-role` and `workshop-agentcore-<prefix>-orchestrator-role` |
-| AgentCore Runtimes | Modules 03–05: 2–3 A2A specialists (no HTTP orchestrator — chain.py coordinates locally) · Modules 06–08: 1 HTTP orchestrator + A2A specialists |
+| AgentCore Runtimes | Module 03 and optional Parallel Fork-Join and Critic-Refiner: 2–3 A2A specialists (no HTTP orchestrator; `chain.py` coordinates locally) · Module 04 and optional Dynamic Swarm and Capstone: 1 HTTP orchestrator + A2A specialists |
 
 ---
 
@@ -162,25 +173,25 @@ What `deploy.py` creates per module:
 | Python | 3.10 or higher (3.13 recommended) |
 | AWS credentials | Amazon Bedrock access. Enable models at [Bedrock console](https://console.aws.amazon.com/bedrock/). |
 | Region | Read from `AWS_REGION` (falls back to your AWS CLI config region) - one region for all services, never hardcoded. Supported: us-east-1, us-east-2, us-west-2. |
-| Modules 03–08 production | AWS credentials with AgentCore, IAM, and S3 permissions |
+| Core and optional production deployments | AWS credentials with AgentCore, IAM, and S3 permissions |
 
-Modules 01, 02, and 08 pin `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. Modules 03–07 pass no model and use the Strands SDK default model on Amazon Bedrock. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+The core modules (01–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
 
 ---
 
 ## Frequently asked questions
 
 **Do I need to complete the modules in order?**
-Yes. Modules build progressively. Module 01 covers Strands foundations; each subsequent module adds one pattern. The Capstone (Module 08) combines all patterns. Modules 03–07 can be explored in any order after Module 01.
+Yes. Follow **01 → 02 → 03 → 04** for the core workshop: each module reuses the tools and decision brief from Module 2 and builds on the one before it. Modules in [`samples/extra/`](./samples/extra/) are optional extensions; their READMEs list prerequisites.
 
 **How long does the full workshop take?**
-About 2 hours for all eight modules. Modules 01–02 (foundations) are 15 minutes each; pattern modules 03–07 are 20 minutes each; the Capstone (08) is 30 minutes.
+The core workshop targets 50 minutes. Optional modules in `samples/extra/` are outside that time budget; deploying resources and running all optional exercises requires additional time.
 
 **What AWS services does this use?**
 Amazon Bedrock (model inference), Amazon Bedrock AgentCore Runtime (managed agent hosting), Amazon S3 (code bundles), AWS IAM (execution roles), and Amazon CloudWatch (OTEL traces and logs).
 
 **Do I need AgentCore to run the notebooks?**
-No. Modules 01–08 notebooks and `chat.py` scripts run locally with only `strands-agents` and AWS Bedrock credentials. AgentCore Runtime is used only in the `production/` deploy folders.
+No. The core and optional notebooks and `chat.py` scripts run locally with their module requirements and AWS Bedrock credentials. AgentCore Runtime is used only in the `production/` deploy folders.
 
 **Can these patterns be used with other agent frameworks?**
 Yes. Sequential Chain, Fork-Join, Critic-Refiner, Swarm, and Agent-as-Tool are general multi-agent design patterns. This workshop implements them with the Strands Agents SDK; the same concepts apply to other frameworks.
@@ -197,7 +208,7 @@ A2A (Agent-to-Agent) provides built-in agent discovery via agent cards, standard
 - [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/)
 - [AgentCore Runtime A2A Protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html)
 - [Strands A2AAgent API Reference](https://strandsagents.com/docs/api/python/strands.agent.a2a_agent/index.md)
-- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/index.md)
+- [Strands GraphBuilder](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/)
 - [Deploy Strands Agents to AgentCore](https://strandsagents.com/docs/user-guide/sdk/deploy/deploy_to_bedrock_agentcore/)
 - [Amazon Bedrock Model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html)
 - [Amazon Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)

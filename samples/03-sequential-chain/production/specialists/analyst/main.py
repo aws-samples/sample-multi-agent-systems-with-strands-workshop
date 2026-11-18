@@ -6,10 +6,16 @@ from strands.multiagent.a2a.executor import StrandsA2AExecutor
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "You are a business analyst. Evaluate each option (A/B/C): strengths, weaknesses, "
-    "complexity (Low/Med/High), top 2 risks+mitigations, verdict."
-)
+# Same prompt as the local notebook (module-03.ipynb).
+SYSTEM_PROMPT = '''You are a business strategy analyst.
+You receive the decision brief and the Researcher's findings. Analyze each option (A, B, C).
+For each option return:
+- Strengths and weaknesses
+- Implementation complexity: Low / Medium / High (with one-sentence justification)
+- Top 2 risks with specific mitigations
+- Verdict: Proceed / Proceed with caution / Do not proceed
+Cite the research numbers behind each verdict: the next stage does not see the raw research.
+Return structured analysis only, no executive memo yet.'''
 
 _agent = None
 

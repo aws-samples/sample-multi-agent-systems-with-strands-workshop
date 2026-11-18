@@ -7,19 +7,16 @@ Each node's output becomes the next node's input — the chain.
 GraphBuilder is the Strands primitive for deterministic multi-agent graphs.
 
     cd samples/03-sequential-chain
-    uv pip install -r requirements.txt
-    uv run python chat.py
+    pip install -r requirements.txt
+    python chat.py
 
 Type or paste a decision brief and press Enter. A multi-line brief pasted at
-once (like DECISION_BRIEF in the notebook) is sent as ONE message.
+once (like DECISION_BRIEF in samples/shared/decision_brief.py) is sent as ONE message.
 Type 'quit' or Ctrl+C to stop.
 
-Model options (pass model= to each Agent to switch):
-    from strands.models import BedrockModel
-    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0")  # default
-    model = BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0")
-    model = BedrockModel(model_id="amazon.nova-pro-v1:0")   # AWS credits
-    model = BedrockModel(model_id="amazon.nova-lite-v1:0")  # cheapest
+Model: no model= is passed, so every agent uses the Strands default on Amazon Bedrock
+(Claude Sonnet 4.6, global.anthropic.claude-sonnet-4-6). To switch, pass
+model=BedrockModel(model_id="...") to each Agent with another model enabled in your account.
 """
 
 import asyncio
@@ -54,19 +51,21 @@ def remember(user_message: str, final_answer: str) -> None:
 RESEARCHER_PROMPT = '''You are a market research specialist.
 Given a decision brief, gather relevant company data, market benchmarks,
 and competitor intelligence using your tools.
-Return structured findings. data only, no recommendations.'''
+Return structured findings: data only, no recommendations.'''
 
 ANALYST_PROMPT = '''You are a business strategy analyst.
-Given market research findings and a decision brief, analyze each option (A, B, C).
+You receive the decision brief and the Researcher's findings. Analyze each option (A, B, C).
 For each option return:
 - Strengths and weaknesses
 - Implementation complexity: Low / Medium / High (with one-sentence justification)
 - Top 2 risks with specific mitigations
 - Verdict: Proceed / Proceed with caution / Do not proceed
-Return structured analysis only. no executive memo yet.'''
+Cite the research numbers behind each verdict: the next stage does not see the raw research.
+Return structured analysis only, no executive memo yet.'''
 
 SYNTHESIZER_PROMPT = '''You are an executive communications specialist.
-Given research findings, option analyses, and the original brief, write a leadership memo:
+You receive the decision brief and the Analyst's option analyses (which cite the research).
+Write a leadership memo:
 
 ## Decision Memo: [Title]
 **Recommendation**: [one sentence: which option and why]
@@ -113,11 +112,7 @@ def build_chain():
 def run_chain(brief: str) -> str:
     """Run one turn of the conversation through a fresh chain and return the memo."""
     result = build_chain()(brief)
-
-    for node in reversed(result.execution_order):
-        if node.node_id == "synthesizer":
-            return str(node.result).strip()
-    return str(result).strip()
+    return str(result.results["synthesizer"].result).strip()
 
 
 def read_message(prompt: str) -> str:

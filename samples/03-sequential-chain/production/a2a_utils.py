@@ -7,7 +7,7 @@ Architecture:
 
 References:
   AWS docs A2A: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html
-  Strands A2A:  https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/
+  Strands A2A:  https://strandsagents.com/docs/user-guide/sdk/multi-agent/agent-to-agent/
   A2A protocol: https://a2aproject.github.io/A2A/latest/
 """
 import os
@@ -117,7 +117,7 @@ def make_a2a_config(actor_id: str = "default-user", region: str = REGION) -> Cli
     authenticate calls to AgentCore Runtime A2A endpoints.
 
     Strands A2AAgent docs:
-    https://strandsagents.com/docs/user-guide/concepts/multi-agent/agent-to-agent/
+    https://strandsagents.com/docs/user-guide/sdk/multi-agent/agent-to-agent/
     """
     auth   = AgentCoreA2AAuth(actor_id=actor_id, region=region)
     transport = httpx.AsyncHTTPTransport(retries=3)
