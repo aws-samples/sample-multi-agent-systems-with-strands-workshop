@@ -1,4 +1,8 @@
-# Module 1: Foundations
+# Module 1: Foundations (optional primer)
+
+> This module is an **optional primer** on Strands agent primitives and the agent loop.
+> The core workshop path is **02 → 03 → 04**. Skip here if you're already comfortable
+> with `Agent`, `@tool`, and `agent.messages`; Module 2 opens with a short recap.
 
 Build a minimal Strands agent, run it, and inspect every step of the agentic loop.
 

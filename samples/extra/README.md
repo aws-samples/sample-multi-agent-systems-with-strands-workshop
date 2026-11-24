@@ -3,11 +3,12 @@
 These modules extend the core workshop. Their original module numbers, notebooks,
 interactive chats, diagrams, and production deployments are preserved.
 
-The core path is [01 Foundations](../01-foundations/) →
-[02 Single Agent](../02-single-agent/) →
+The core path is [02 Single Agent](../02-single-agent/) →
 [03 Sequential Chain](../03-sequential-chain/) →
-[04 Agent-as-Tool](../04-agent-as-tool/). The optional modules keep their original
-numbers, so `04-parallel-fork-join` here is separate from core module 04.
+[04 Agent-as-Tool](../04-agent-as-tool/), with
+[01 Foundations](../01-foundations/) as an optional primer. The optional modules
+here keep their original numbers, so `04-parallel-fork-join` is separate from core
+module 04.
 
 | Module | Focus |
 |--------|-------|

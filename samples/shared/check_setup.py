@@ -1,6 +1,6 @@
 """Check that this machine is ready for the workshop.
 
-Run from the repository root before module 01:
+Run from the repository root before module 02 (or module 01, the optional primer):
 
     python samples/shared/check_setup.py
     python samples/shared/check_setup.py --model <MODEL_ID>   # if your event enables a different model
@@ -44,7 +44,7 @@ def check_python():
 
 
 def check_strands():
-    install = "pip install -r samples/01-foundations/requirements.txt"
+    install = "pip install -r samples/02-single-agent/requirements.txt"
     try:
         version = metadata.version("strands-agents")
     except metadata.PackageNotFoundError:
@@ -147,7 +147,7 @@ def main():
     region = check_region(session)
     check_credentials(session, region)
     check_bedrock(session, region, args.model)
-    print("\nAll checks passed. You're ready for module 01.")
+    print("\nAll checks passed. You're ready for module 02 (or the optional module 01 primer).")
 
 
 if __name__ == "__main__":

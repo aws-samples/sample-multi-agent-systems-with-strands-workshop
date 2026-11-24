@@ -2,7 +2,7 @@
 
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
-Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Follow the core path **01 Foundations → 02 Single Agent → 03 Sequential Chain → 04 Agent-as-Tool** to explore the agent loop, graph-based orchestration, and specialist delegation. Modules 03 and 04 include deployments to [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/). Additional patterns and the capstone are available in [`samples/extra/`](./samples/extra/).
+Build, deploy, and scale multi-agent systems using reusable patterns with the [Strands Agents SDK](https://strandsagents.com/docs/). Follow the core path **02 Single Agent → 03 Sequential Chain → 04 Agent-as-Tool** to explore graph-based orchestration and specialist delegation. [01 Foundations](./samples/01-foundations/) is an optional primer on Strands agent primitives and the agent loop. Modules 03 and 04 include deployments to [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/). Additional patterns and the capstone are available in [`samples/extra/`](./samples/extra/).
 
 ![Strands Agents](https://img.shields.io/badge/Strands_Agents-SDK-FF9900?logo=amazonaws&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
@@ -18,7 +18,6 @@ Work through the core modules in order.
 
 | Module | Description | Strands Pattern | Production Protocol |
 |--------|-------------|-----------------|---------------------|
-| [01 Foundations](./samples/01-foundations/) | Strands agent primitives, a first tool, inspecting the agent loop, metrics, multi-turn | `Agent(tools=[...])` | n/a |
 | [02 Single Agent](./samples/02-single-agent/) | One Strategy Advisor agent with three business intelligence tools on the MarketNest decision brief; inspect the loop and hit the single-agent ceiling | `Agent(tools=[...], system_prompt=...)` · `chat.py` keeps one agent with `context_manager="auto"` | n/a |
 | [03 Sequential Chain](./samples/03-sequential-chain/) | Break the single-agent ceiling: the same brief through Researcher → Analyst → Synthesizer in a fixed order set by graph edges | [`GraphBuilder`](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) · `A2AAgent` nodes (prod) | `chain.py` local · Specialists: **A2A** |
 | [04 Agent-as-Tool](./samples/04-agent-as-tool/) | Investment analysis of the same brief: an LLM orchestrator delegates to Research, Finance, Legal and Writer specialists used as tools; the model picks the order | `@tool` wrapping `Agent` · `as_tool(delegate=True)` · `A2AAgent` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
@@ -27,10 +26,11 @@ Modules **03 and 04** include a `production/` subfolder.
 
 ### Optional modules
 
-These keep their original numbers, so the optional Parallel Fork-Join is `extra/04-parallel-fork-join`, separate from core module 04.
+[01 Foundations](./samples/01-foundations/) is an optional primer on Strands agent primitives, a first tool, inspecting the agent loop, metrics, and multi-turn. The remaining optional modules keep their original numbers, so the optional Parallel Fork-Join is `extra/04-parallel-fork-join`, separate from core module 04.
 
 | Module | Description | Strands Pattern | Production Protocol |
 |--------|-------------|-----------------|---------------------|
+| [01 Foundations](./samples/01-foundations/) | Strands agent primitives, a first tool, inspecting the agent loop, metrics, multi-turn | `Agent(tools=[...])` | n/a |
 | [04 Parallel Fork-Join](./samples/extra/04-parallel-fork-join/) | Researcher feeds three analyzers running simultaneously; results merged at the synthesizer | `GraphBuilder` DAG + parallel edges | `chain.py` local · Specialists: **A2A** |
 | [05 Critic-Refiner](./samples/extra/05-critic-refiner/) | Writer drafts, Critic evaluates, memo cycles back until `APPROVED` | `GraphBuilder` cycle + `set_max_node_executions` | `chain.py` local · Specialists: **A2A** |
 | [06 Dynamic Swarm](./samples/extra/06-dynamic-swarm/) | Incident response: Monitor → Network Specialist / DB Admin → Resolver; path emerges at runtime | `Swarm` (local) · `Agent(tools=[...])` (prod) | Orchestrator: **HTTP** · Specialists: **A2A** |
@@ -105,10 +105,10 @@ Open the workshop environment. All dependencies are pre-installed. From the repo
 Clone this repository and navigate to any module:
 
 ```bash
-cd samples/01-foundations
+cd samples/02-single-agent
 pip install -r requirements.txt
 python ../shared/check_setup.py     # checks Python, Strands, region, credentials, and Bedrock model access
-jupyter notebook module-01.ipynb
+jupyter notebook module-02.ipynb
 ```
 
 ### Chat with a module from the terminal
@@ -177,14 +177,14 @@ What `deploy.py` creates per module:
 | Core and optional production deployments | AWS credentials with AgentCore, IAM, and S3 permissions |
 | Setup check | `python samples/shared/check_setup.py` verifies the local prerequisites above and makes one Bedrock call (`--model <MODEL_ID>` to test a different model) |
 
-The core modules (01–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). The exception is module 03, which runs its text-only Analyst and Synthesizer on Amazon Nova Pro on purpose to show right-sizing a model per stage. Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+The core modules (02–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). The exception is module 03, which runs its text-only Analyst and Synthesizer on Amazon Nova Pro on purpose to show right-sizing a model per stage. Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
 
 ---
 
 ## Frequently asked questions
 
 **Do I need to complete the modules in order?**
-Yes. Follow **01 → 02 → 03 → 04** for the core workshop: each module reuses the tools and decision brief from Module 2 and builds on the one before it. Modules in [`samples/extra/`](./samples/extra/) are optional extensions; their READMEs list prerequisites.
+Yes. Follow **02 → 03 → 04** for the core workshop: each module reuses the tools and decision brief from Module 2 and builds on the one before it. [01 Foundations](./samples/01-foundations/) is an optional primer on agent primitives, and the modules in [`samples/extra/`](./samples/extra/) are optional extensions; their READMEs list prerequisites.
 
 **How long does the full workshop take?**
 The core workshop targets 50 minutes. Optional modules in `samples/extra/` are outside that time budget; deploying resources and running all optional exercises requires additional time.

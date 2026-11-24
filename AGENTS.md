@@ -7,17 +7,18 @@ read `README.md` and `CONTRIBUTING.md` first.
 
 Sample code for the **Multi-Agent Systems with Strands** workshop. It teaches how to
 build multi-agent systems with the [Strands Agents SDK](https://strandsagents.com) on
-Amazon Bedrock. The core workshop follows modules **01 → 02 → 03 → 04**: the agent
-loop, a single agent, graph-based orchestration, and agents as tools. Additional
-patterns and the capstone are optional modules in `samples/extra/`; they keep their
-original numbers, so `extra/04-parallel-fork-join` is not core module 04.
+Amazon Bedrock. The core workshop follows modules **02 → 03 → 04**: a single agent,
+graph-based orchestration, and agents as tools. Module **01 Foundations** (the agent
+loop) is an optional primer. Additional patterns and the capstone are optional modules
+in `samples/extra/`; they keep their original numbers, so `extra/04-parallel-fork-join`
+is not core module 04.
 
 Each module has a local version (notebook + `chat.py`) and a `production/` version that
 deploys to Amazon Bedrock AgentCore Runtime over the A2A protocol.
 
 ```
 samples/
-  01-foundations/         Agent primitives + the agent loop
+  01-foundations/         Agent primitives + the agent loop (optional primer)
   02-single-agent/        One agent with tools; the single-agent ceiling
   03-sequential-chain/    Pattern 1 — Researcher → Analyst → Synthesizer
   04-agent-as-tool/       Pattern 5 — orchestrator delegates to specialist tools
