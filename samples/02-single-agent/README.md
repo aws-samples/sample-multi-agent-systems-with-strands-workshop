@@ -51,7 +51,7 @@ Or open `module-02.ipynb` in VS Code / JupyterLab and run cells top to bottom.
 No `model=` is passed, so the agent uses the Strands default on Amazon Bedrock: Claude Sonnet 4.6 (`global.anthropic.claude-sonnet-4-6`). To switch, pass `model=BedrockModel(model_id="...")`, for example:
 
 - `us.anthropic.claude-haiku-4-5-20251001-v1:0`
-- `amazon.nova-pro-v1:0`
+- `amazon.nova-lite-v1:0` (bare ID: the Workshop Studio policy allows no Amazon inference profiles, and bare Nova Pro is on-demand only in us-east-1)
 
 Use a model that is enabled in your account and Region.
 

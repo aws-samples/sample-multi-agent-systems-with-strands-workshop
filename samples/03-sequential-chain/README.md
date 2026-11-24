@@ -64,9 +64,9 @@ A chain lets you pick a model per stage, and this module does so on purpose:
 | Stage | Model | Why |
 |---|---|---|
 | Researcher | Strands default, Claude Sonnet 4.6 (`global.anthropic.claude-sonnet-4-6`) | Choosing tools and filling in their arguments is the hardest step |
-| Analyst, Synthesizer | Amazon Nova Pro (`us.` / `eu.` / `apac.amazon.nova-pro-v1:0`, from your region) | They only transform text they are handed, so a smaller, cheaper model is enough |
+| Analyst, Synthesizer | Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`) | They only transform text they are handed, so a smaller, cheaper model is enough |
 
-Nova Pro is called through its cross-region inference profile because the bare `amazon.nova-pro-v1:0` is rejected on-demand in most regions. In a region with no Nova Pro profile, those two stages fall back to the Sonnet default. The notebook, `chat.py` and `production/` use the same split.
+Both models are Anthropic models called through global inference profiles, which the Workshop Studio participant policy allows. The notebook, `chat.py` and `production/` use the same split.
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
