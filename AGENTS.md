@@ -65,7 +65,9 @@ and the mock data tools remain in `samples/02-single-agent/decision_brief_tools.
 - **Model choice** is left to the Strands Bedrock default (Claude Sonnet 4.6,
   `global.anthropic.claude-sonnet-4-6`, in strands-agents 1.65); alternatives are shown in comments so
   the samples run at events that only enable specific models. If you pin a model, pin it
-  everywhere consistently and say why.
+  everywhere consistently and say why. Exception: module 03 deliberately runs its Analyst
+  and Synthesizer on Amazon Nova Pro (inference profile `us.`/`eu.`/`apac.` derived from the
+  region) to teach right-sizing per stage; notebook, `chat.py` and `production/` all match.
 - Specialists set `callback_handler=None` so only the final result is printed.
 - Local `chat.py` (modules 02–08) is the notebook in script form: same prompts, agents,
   topology and limits. It waits for the user (no default prompt, an empty line is

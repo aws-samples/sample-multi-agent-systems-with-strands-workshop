@@ -25,7 +25,13 @@ Build a minimal Strands agent, run it, and inspect every step of the agentic loo
 
 ## Run
 
-Open `module-01.ipynb` in VS Code or JupyterLab and run cells top to bottom.
+First check your setup (Python, Strands, region, credentials, Bedrock model access):
+
+```bash
+python ../shared/check_setup.py
+```
+
+Then open `module-01.ipynb` in VS Code or JupyterLab and run cells top to bottom.
 
 ## Prerequisites
 

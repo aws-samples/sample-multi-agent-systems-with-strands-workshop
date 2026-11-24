@@ -21,7 +21,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
-from strands import Agent, tool
+from strands import Agent, ToolContext, tool
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
 
@@ -67,8 +67,11 @@ ORCHESTRATOR_PROMPT = (
 )
 
 
-@tool
-def research_agent(topic: str) -> str:
+# context=True gives each tool a tool_context (hidden from the model). Forwarding its
+# invocation_context makes the worker join the orchestrator's request, so the worker's
+# tokens count in the request's usage and any request limits apply to it too.
+@tool(context=True)
+def research_agent(topic: str, tool_context: ToolContext) -> str:
     """Gather market data, company metrics, and competitive intelligence for an investment topic.
 
     Args:
@@ -79,11 +82,11 @@ def research_agent(topic: str) -> str:
         system_prompt=RESEARCH_PROMPT,
         callback_handler=None,
     )
-    return str(worker(topic))
+    return str(worker(topic, invocation_context=tool_context.invocation_context))
 
 
-@tool
-def finance_agent(brief: str, research_context: str) -> str:
+@tool(context=True)
+def finance_agent(brief: str, research_context: str, tool_context: ToolContext) -> str:
     """Analyze financial viability: ROI, unit economics, projections, and investment verdict.
 
     Args:
@@ -91,18 +94,19 @@ def finance_agent(brief: str, research_context: str) -> str:
         research_context: Market and company data from research_agent
     """
     worker = Agent(system_prompt=FINANCE_PROMPT, callback_handler=None)
-    return str(worker(f"Investment brief:\n{brief}\n\nMarket research:\n{research_context}"))
+    return str(worker(f"Investment brief:\n{brief}\n\nMarket research:\n{research_context}",
+                      invocation_context=tool_context.invocation_context))
 
 
-@tool
-def legal_agent(brief: str) -> str:
+@tool(context=True)
+def legal_agent(brief: str, tool_context: ToolContext) -> str:
     """Review legal and compliance risks: regulatory exposure, data privacy, IP, due diligence flags.
 
     Args:
         brief: The investment brief to review
     """
     worker = Agent(system_prompt=LEGAL_PROMPT, callback_handler=None)
-    return str(worker(brief))
+    return str(worker(brief, invocation_context=tool_context.invocation_context))
 
 
 # The writer is an Agent turned into a tool with .as_tool(). delegate=True makes its memo
