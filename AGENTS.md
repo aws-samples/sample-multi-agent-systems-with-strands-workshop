@@ -67,8 +67,18 @@ and the mock data tools remain in `samples/02-single-agent/decision_brief_tools.
   `global.anthropic.claude-sonnet-4-6`, in strands-agents 1.65); alternatives are shown in comments so
   the samples run at events that only enable specific models. If you pin a model, pin it
   everywhere consistently and say why. Exception: module 03 deliberately runs its Analyst
-  and Synthesizer on Amazon Nova Pro (inference profile `us.`/`eu.`/`apac.` derived from the
-  region) to teach right-sizing per stage; notebook, `chat.py` and `production/` all match.
+  and Synthesizer on Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`)
+  to teach right-sizing per stage; Amazon Nova is not used because the Workshop Studio participant
+  policy only allows Anthropic inference profiles; notebook, `chat.py` and `production/` all match.
+- **Model IDs must pass the Workshop Studio policy.** Notebooks and `chat.py` run on the Code Editor
+  instance, whose role (like the participant role) allows only `foundation-model/anthropic.*`,
+  `foundation-model/amazon.*` and `inference-profile/*.anthropic.*`. So use Anthropic models (bare
+  or `us.`/`global.` profiles) or bare Amazon IDs; an Amazon inference profile such as
+  `us.amazon.nova-pro-v1:0` is denied. Bare `amazon.nova-pro-v1:0` is on-demand only in us-east-1;
+  bare `amazon.nova-lite-v1:0` works in all three supported regions. The AgentCore runtime roles
+  (`ws-agentcore-*-exec`) allow every model, so a model can work when deployed and still fail in the
+  notebook. Check a new ID with `python samples/shared/check_setup.py --model <ID>` and with
+  `aws iam simulate-custom-policy` against the Workshop Studio `static/iam_policy.json`.
 - Specialists set `callback_handler=None` so only the final result is printed.
 - Local `chat.py` (modules 02–08) is the notebook in script form: same prompts, agents,
   topology and limits. It waits for the user (no default prompt, an empty line is

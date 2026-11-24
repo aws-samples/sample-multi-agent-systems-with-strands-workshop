@@ -17,7 +17,7 @@ Type 'quit' or Ctrl+C to stop.
 Models (same as the notebook): the Researcher uses the Strands default on Amazon Bedrock
 (Claude Sonnet 4.6, global.anthropic.claude-sonnet-4-6) because choosing tools is the hard
 step. The Analyst and Synthesizer only transform text they are handed, so they run on the
-smaller, cheaper Amazon Nova Pro, on purpose.
+smaller, cheaper Claude Haiku 4.5, on purpose.
 """
 
 import asyncio
@@ -26,7 +26,6 @@ import os
 import select
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "02-single-agent"))
 
-import boto3
 from strands import Agent
 from strands.models import BedrockModel
 from strands.memory import MemoryManager
@@ -34,11 +33,9 @@ from strands.multiagent import GraphBuilder
 from strands.vended_memory_stores.test_memory_store import TestMemoryStore
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
 
-# Nova Pro is called through its cross-region inference profile (us./eu./apac.):
-# the bare "amazon.nova-pro-v1:0" is rejected on-demand in most regions.
-region = os.environ.get("AWS_REGION") or boto3.Session().region_name
-geo = {"us": "us", "eu": "eu", "ap": "apac"}.get(region.split("-")[0])
-NOVA_PRO = BedrockModel(model_id=f"{geo}.amazon.nova-pro-v1:0") if geo else None  # None → Sonnet default
+# Same models as the notebook: the Analyst and Synthesizer only transform text, so they run on
+# Claude Haiku 4.5, a smaller model, through its global inference profile.
+SMALL_MODEL = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # Conversation memory for this chat session (Strands memory: TestMemoryStore + MemoryManager).
 # Only two things are saved per turn: what the user said and the system's final answer,
@@ -103,9 +100,9 @@ def build_chain():
         # agent keeps exactly the tools it has in the notebook.
         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False),
     )
-    analyst     = Agent(model=NOVA_PRO, system_prompt=ANALYST_PROMPT,     callback_handler=None,
+    analyst     = Agent(model=SMALL_MODEL, system_prompt=ANALYST_PROMPT,     callback_handler=None,
                         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
-    synthesizer = Agent(model=NOVA_PRO, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None,
+    synthesizer = Agent(model=SMALL_MODEL, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None,
                         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
 
     builder = GraphBuilder()
