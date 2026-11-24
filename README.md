@@ -98,7 +98,7 @@ References: [AgentCore A2A](https://docs.aws.amazon.com/bedrock-agentcore/latest
 
 ### In AWS Workshop Studio
 
-Open the workshop environment. All dependencies are pre-installed. Open any module notebook and run cells top to bottom.
+Open the workshop environment. All dependencies are pre-installed. From the repository root, run `python samples/shared/check_setup.py` to confirm your region, credentials, and Bedrock model access, then open any module notebook and run cells top to bottom.
 
 ### Locally
 
@@ -107,6 +107,7 @@ Clone this repository and navigate to any module:
 ```bash
 cd samples/01-foundations
 pip install -r requirements.txt
+python ../shared/check_setup.py     # checks Python, Strands, region, credentials, and Bedrock model access
 jupyter notebook module-01.ipynb
 ```
 
@@ -174,8 +175,9 @@ What `deploy.py` creates per module:
 | AWS credentials | Amazon Bedrock access. Enable models at [Bedrock console](https://console.aws.amazon.com/bedrock/). |
 | Region | Read from `AWS_REGION` (falls back to your AWS CLI config region) - one region for all services, never hardcoded. Supported: us-east-1, us-east-2, us-west-2. |
 | Core and optional production deployments | AWS credentials with AgentCore, IAM, and S3 permissions |
+| Setup check | `python samples/shared/check_setup.py` verifies the local prerequisites above and makes one Bedrock call (`--model <MODEL_ID>` to test a different model) |
 
-The core modules (01–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+The core modules (01–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). The exception is module 03, which runs its text-only Analyst and Synthesizer on Amazon Nova Pro on purpose to show right-sizing a model per stage. Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
 
 ---
 
