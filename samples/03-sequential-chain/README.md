@@ -66,7 +66,7 @@ A chain lets you pick a model per stage, and this module does so on purpose:
 | Researcher | Strands default, Claude Sonnet 4.6 (`global.anthropic.claude-sonnet-4-6`) | Choosing tools and filling in their arguments is the hardest step |
 | Analyst, Synthesizer | Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`) | They only transform text they are handed, so a smaller, cheaper model is enough |
 
-Both models are Anthropic models called through global inference profiles, which the Workshop Studio participant policy allows. The notebook, `chat.py` and `production/` use the same split.
+The notebook, `chat.py` and `production/` use the same split.
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)
