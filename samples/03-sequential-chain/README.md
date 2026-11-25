@@ -57,16 +57,11 @@ print(result.results["synthesizer"].result)
 
 See the [Strands GraphBuilder docs](https://strandsagents.com/docs/user-guide/sdk/multi-agent/graph/) and [multi-agent patterns](https://strandsagents.com/docs/user-guide/sdk/multi-agent/multi-agent-patterns/).
 
-## Models: right-sized per stage
+## Model: a smaller model on purpose
 
-A chain lets you pick a model per stage, and this module does so on purpose:
+All three agents run on Amazon Nova Lite (`amazon.nova-lite-v1:0`, `max_tokens=5000`). In a graph the edges do the routing, so each agent only does one narrow job and a smaller, cheaper model is enough. Module 4's orchestrator has to choose the next step itself, so it goes back to the stronger Claude Sonnet 4.6 default.
 
-| Stage | Model | Why |
-|---|---|---|
-| Researcher | Strands default, Claude Sonnet 4.6 (`global.anthropic.claude-sonnet-4-6`) | Choosing tools and filling in their arguments is the hardest step |
-| Analyst, Synthesizer | Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`) | They only transform text they are handed, so a smaller, cheaper model is enough |
-
-The notebook, `chat.py` and `production/` use the same split.
+The notebook, `chat.py` and `production/` use the same model.
 
 **Pricing:**
 - [Amazon Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/)

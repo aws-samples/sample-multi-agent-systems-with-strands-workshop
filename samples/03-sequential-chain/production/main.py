@@ -19,10 +19,10 @@ from strands import Agent
 from strands.models import BedrockModel
 from strands.multiagent import GraphBuilder
 
-# Same models as the notebook: the Researcher keeps the Sonnet default (tool use is the hard
-# step); the Analyst and Synthesizer only transform text, so they run on the smaller
-# Claude Haiku 4.5, through its global inference profile.
-SMALL_MODEL = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
+# Same model as the notebook: Amazon Nova Lite. In a graph the edges do the routing, so each
+# agent only does one narrow job and a smaller model is enough. max_tokens: Strands has no
+# output limit on record for Nova, and Bedrock's default can cut a long answer short.
+MODEL = BedrockModel(model_id="amazon.nova-lite-v1:0", max_tokens=5000)
 
 # Mock business intelligence tools (a copy of ../../02-single-agent/decision_brief_tools.py,
 # so the container is self-contained). Replace with a live data source, for example
@@ -72,12 +72,13 @@ Under 400 words. Be direct.'''
 def build_chain():
     """Build the chain fresh per request, like the notebook, so no state leaks between requests."""
     researcher = Agent(
+        model=MODEL,
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         system_prompt=RESEARCHER_PROMPT,
         callback_handler=None,
     )
-    analyst = Agent(model=SMALL_MODEL, system_prompt=ANALYST_PROMPT, callback_handler=None)
-    synthesizer = Agent(model=SMALL_MODEL, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
+    analyst = Agent(model=MODEL, system_prompt=ANALYST_PROMPT, callback_handler=None)
+    synthesizer = Agent(model=MODEL, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None)
 
     builder = GraphBuilder()
     builder.add_node(researcher,  "researcher")
