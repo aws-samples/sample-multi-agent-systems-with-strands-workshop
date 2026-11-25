@@ -177,7 +177,7 @@ What `deploy.py` creates per module:
 | Core and optional production deployments | AWS credentials with AgentCore, IAM, and S3 permissions |
 | Setup check | `python samples/shared/check_setup.py` verifies the local prerequisites above and makes one Bedrock call (`--model <MODEL_ID>` to test a different model) |
 
-The core modules (02–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). The exception is module 03, which runs its text-only Analyst and Synthesizer on Claude Haiku 4.5 on purpose to show right-sizing a model per stage. Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+The core modules (02–04) pass no model, so they use the Strands SDK default on Amazon Bedrock: Claude Sonnet 4.6 through the global inference profile `global.anthropic.claude-sonnet-4-6` (strands-agents 1.65). The exception is module 03, which runs all three agents on Amazon Nova Lite (`amazon.nova-lite-v1:0`) on purpose: its graph fixes the routing, so a smaller model is enough. Each module's model cell or docstring shows how to switch to another model enabled in your account. The optional capstone (08) pins `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. See [available model IDs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
 
 ---
 

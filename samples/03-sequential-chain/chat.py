@@ -14,10 +14,8 @@ Type or paste a decision brief and press Enter. A multi-line brief pasted at
 once (like DECISION_BRIEF in samples/shared/decision_brief.py) is sent as ONE message.
 Type 'quit' or Ctrl+C to stop.
 
-Models (same as the notebook): the Researcher uses the Strands default on Amazon Bedrock
-(Claude Sonnet 4.6, global.anthropic.claude-sonnet-4-6) because choosing tools is the hard
-step. The Analyst and Synthesizer only transform text they are handed, so they run on the
-smaller, cheaper Claude Haiku 4.5, on purpose.
+Model: Amazon Nova Lite (amazon.nova-lite-v1:0), same as the notebook. The graph
+fixes the routing, so a smaller model is enough; Module 4's orchestrator needs a stronger one.
 """
 
 import asyncio
@@ -32,10 +30,6 @@ from strands.memory import MemoryManager
 from strands.multiagent import GraphBuilder
 from strands.vended_memory_stores.test_memory_store import TestMemoryStore
 from decision_brief_tools import get_company_data, get_market_benchmarks, get_competitor_data
-
-# Same models as the notebook: the Analyst and Synthesizer only transform text, so they run on
-# Claude Haiku 4.5, a smaller model, through its global inference profile.
-SMALL_MODEL = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # Conversation memory for this chat session (Strands memory: TestMemoryStore + MemoryManager).
 # Only two things are saved per turn: what the user said and the system's final answer,
@@ -87,12 +81,19 @@ Write a leadership memo:
 ### Success Metrics (3-5 KPIs with targets)
 ### Decision Required: owner · deadline · approvers needed
 
-Under 250 words. Be direct.'''
+Under 400 words. Be direct.'''
+
+
+# Same model as the notebook: Amazon Nova Lite. In a graph the edges do the routing, so each
+# agent only does one narrow job and a smaller model is enough. max_tokens: Strands has no
+# output limit on record for Nova, and Bedrock's default can cut a long answer short.
+MODEL = BedrockModel(model_id="amazon.nova-lite-v1:0", max_tokens=5000)
 
 
 def build_chain():
     """Build the sequential chain via Strands GraphBuilder (same as the notebook)."""
     researcher = Agent(
+        model=MODEL,
         tools=[get_company_data, get_market_benchmarks, get_competitor_data],
         system_prompt=RESEARCHER_PROMPT,
         callback_handler=None,
@@ -100,9 +101,9 @@ def build_chain():
         # agent keeps exactly the tools it has in the notebook.
         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False),
     )
-    analyst     = Agent(model=SMALL_MODEL, system_prompt=ANALYST_PROMPT,     callback_handler=None,
+    analyst     = Agent(model=MODEL, system_prompt=ANALYST_PROMPT,     callback_handler=None,
                         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
-    synthesizer = Agent(model=SMALL_MODEL, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None,
+    synthesizer = Agent(model=MODEL, system_prompt=SYNTHESIZER_PROMPT, callback_handler=None,
                         memory_manager=MemoryManager(stores=[MEMORY], search_tool_config=False))
 
     builder = GraphBuilder()

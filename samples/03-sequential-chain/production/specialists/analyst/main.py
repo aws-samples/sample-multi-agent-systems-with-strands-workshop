@@ -8,9 +8,10 @@ from strands.multiagent.a2a.executor import StrandsA2AExecutor
 
 logger = logging.getLogger(__name__)
 
-# Same model as the notebook: this stage only transforms text, so it runs on the smaller
-# Claude Haiku 4.5, through its global inference profile.
-SMALL_MODEL = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
+# Same model as the notebook: Amazon Nova Lite. In a graph the edges do the routing, so each
+# agent only does one narrow job and a smaller model is enough. max_tokens: Strands has no
+# output limit on record for Nova, and Bedrock's default can cut a long answer short.
+MODEL = BedrockModel(model_id="amazon.nova-lite-v1:0", max_tokens=5000)
 
 # Same prompt as the local notebook (module-03.ipynb).
 SYSTEM_PROMPT = '''You are a business strategy analyst.
@@ -28,7 +29,7 @@ _agent = None
 def get_agent():
     global _agent
     if _agent is None:
-        _agent = Agent(model=SMALL_MODEL, system_prompt=SYSTEM_PROMPT, callback_handler=None)
+        _agent = Agent(model=MODEL, system_prompt=SYSTEM_PROMPT, callback_handler=None)
     return _agent
 
 if __name__ == "__main__":
