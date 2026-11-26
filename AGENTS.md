@@ -3,6 +3,12 @@
 Guidance for AI coding agents working in this repository. Human contributors should
 read `README.md` and `CONTRIBUTING.md` first.
 
+## Demo, not production
+
+This is a demo project for learning. It has not been through a production readiness
+review or a load test. Don't describe it as production-ready, and point out security,
+cost or operations gaps when you change it.
+
 ## What this repo is
 
 Sample code for the **Multi-Agent Systems with Strands** workshop. It teaches how to

@@ -1,4 +1,4 @@
-> **These are educational samples.** The code in this repository is designed for learning and experimentation. It is not intended for production use without additional hardening, security review, and adaptation to your specific requirements.
+> **Demo project:** these samples teach multi-agent architecture and integration patterns. They have not been through a production readiness review or a load test. Review security, cost and operations before you adapt them.
 
 # Build Production Multi-Agent Systems with Strands Agents and Amazon Bedrock AgentCore
 
